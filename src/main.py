@@ -1,7 +1,8 @@
 from config.settings import *
+from modules.system_info import get_system_info
 
-print("=" * 50)
-print(f"Welcome to {PROJECT_NAME}")
-print(f"Version : {VERSION}")
-print(f"Author  : {AUTHOR}")
-print("=" * 50)
+print("=" * 40)
+print(" Welcome to", PROJECT_NAME)
+print("=" * 40)
+
+get_system_info()
