@@ -1,7 +1,7 @@
 import os
 import hashlib
 import mimetypes
-
+from modules.flag_detector import detect_flags
 
 def analyze_file(file_path):
     if not os.path.isfile(file_path):
@@ -31,3 +31,12 @@ def analyze_file(file_path):
     print("MD5       :", md5_hash)
     print("SHA1      :", sha1_hash)
     print("SHA256    :", sha256_hash)
+    text_data = data.decode("utf-8", errors="ignore")
+    found_flags = detect_flags(text_data)
+
+    print("\nFlag Detection:")
+    if found_flags:
+        for flag in found_flags:
+            print("Found Flag :", flag)
+    else:
+        print("No obvious flag pattern found.")
