@@ -6,7 +6,7 @@ from modules.strings_extractor import extract_strings
 from modules.base64_tool import encode_base64, decode_base64
 from modules.interesting_strings import analyze_interesting_strings
 from modules.hex_analyzer import analyze_hex
-
+from modules.smart_analyzer import smart_analyze
 
 def show_banner():
     print("=" * 50)
@@ -24,7 +24,8 @@ def show_menu():
     print("[4] Strings Extractor")
     print("[5] Base64 Tool")
     print("[6] Hex Analyzer")
-    print("[7] Exit")
+    print("[7] Smart Analysis")
+    print("[8] Exit")
 
 
 def main():
@@ -118,14 +119,17 @@ def main():
              file_path = input("\nEnter file path: ").strip()
              analyze_hex(file_path)
 
-
-
         elif choice == "7":
+             file_path = input("Enter file path: ").strip()
+             smart_analyze(file_path)
+
+
+        elif choice == "8":
             print("\nExiting FalconCTF...")
             break
 
         else:
-            print("\nInvalid option. Please choose 1-7.")
+            print("\nInvalid option. Please choose 1-8.")
 
 
 if __name__ == "__main__":
