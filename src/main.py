@@ -5,6 +5,7 @@ from modules.flag_detector import detect_flags
 from modules.strings_extractor import extract_strings
 from modules.base64_tool import encode_base64, decode_base64
 from modules.interesting_strings import analyze_interesting_strings
+from modules.hex_analyzer import analyze_hex
 
 
 def show_banner():
@@ -22,7 +23,8 @@ def show_menu():
     print("[3] Flag Detector")
     print("[4] Strings Extractor")
     print("[5] Base64 Tool")
-    print("[6] Exit")
+    print("[6] Hex Analyzer")
+    print("[7] Exit")
 
 
 def main():
@@ -113,11 +115,17 @@ def main():
                 print("\nInvalid Base64 option.")
 
         elif choice == "6":
+             file_path = input("\nEnter file path: ").strip()
+             analyze_hex(file_path)
+
+
+
+        elif choice == "7":
             print("\nExiting FalconCTF...")
             break
 
         else:
-            print("\nInvalid option. Please choose 1-6.")
+            print("\nInvalid option. Please choose 1-7.")
 
 
 if __name__ == "__main__":
