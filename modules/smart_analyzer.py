@@ -4,6 +4,7 @@ from modules.hash_analyzer import calculate_hashes
 from modules.hex_analyzer import detect_file_type
 from modules.strings_extractor import extract_strings
 from modules.interesting_strings import analyze_interesting_strings
+from modules.analysis_router import choose_analysis
 
 
 def smart_analyze(file_path):
@@ -27,6 +28,13 @@ def smart_analyze(file_path):
 
         print("\nDetected File Type:")
         print(file_type)
+        analysis_plan = choose_analysis(file_type)
+
+        print("\nRecommended Analysis Plan:")
+
+        for analysis in analysis_plan:
+            readable_name = analysis.replace("_", " ").title()
+            print("[+]", readable_name)
 
         hashes = calculate_hashes(file_path)
 
