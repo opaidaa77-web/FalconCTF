@@ -1,7 +1,7 @@
 import os
 
 from modules.hash_analyzer import calculate_hashes
-from modules.hex_analyzer import detect_file_type
+from modules.hex_analyzer import detect_file_type, analyze_hex
 from modules.strings_extractor import extract_strings
 from modules.interesting_strings import analyze_interesting_strings
 from modules.analysis_router import choose_analysis
@@ -39,6 +39,8 @@ def smart_analyze(file_path):
             print("[+]", readable_name)
         if "binary_analysis" in analysis_plan:
             analyze_binary(file_path)
+        if "hex_analysis" in analysis_plan:
+           analyze_hex(file_path)
         hashes = calculate_hashes(file_path)
 
         if hashes:
