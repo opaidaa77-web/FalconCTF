@@ -1,5 +1,5 @@
 import os
-import hashlib
+from modules.hash_analyzer import calculate_hashes
 import mimetypes
 from modules.flag_detector import detect_flags
 
@@ -24,13 +24,15 @@ def analyze_file(file_path):
     with open(file_path, "rb") as file:
         data = file.read()
 
-    md5_hash = hashlib.md5(data).hexdigest()
-    sha1_hash = hashlib.sha1(data).hexdigest()
-    sha256_hash = hashlib.sha256(data).hexdigest()
+        hashes = calculate_hashes(file_path)
 
-    print("MD5       :", md5_hash)
-    print("SHA1      :", sha1_hash)
-    print("SHA256    :", sha256_hash)
+    if hashes:
+        print("MD5      :", hashes["MD5"])
+        print("SHA1     :", hashes["SHA1"])
+        print("SHA256   :", hashes["SHA256"])
+    else:
+        print("Unable to calculate file hashes.")
+
     text_data = data.decode("utf-8", errors="ignore")
     found_flags = detect_flags(text_data)
 
