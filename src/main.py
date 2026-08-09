@@ -4,6 +4,8 @@ from modules.file_analyzer import analyze_file
 from modules.flag_detector import detect_flags
 from modules.strings_extractor import extract_strings
 from modules.base64_tool import encode_base64, decode_base64
+from modules.interesting_strings import analyze_interesting_strings
+
 
 def show_banner():
     print("=" * 50)
@@ -55,11 +57,32 @@ def main():
 
             if strings:
                 print(f"\nStrings Found: {len(strings)}")
+
                 for string in strings[:50]:
                     print(string)
 
                 if len(strings) > 50:
                     print(f"\n... and {len(strings) - 50} more strings.")
+
+                findings = analyze_interesting_strings(strings)
+
+                print("\n" + "=" * 50)
+                print("Interesting Findings")
+                print("=" * 50)
+
+                found_anything = False
+
+                for category, items in findings.items():
+                    if items:
+                        found_anything = True
+                        print(f"\n{category.upper()}:")
+
+                        for item in items:
+                            print(" -", item)
+
+                if not found_anything:
+                    print("\nNo interesting strings detected.")
+
             else:
                 print("\nNo readable strings found.")
 
@@ -72,6 +95,7 @@ def main():
             if base64_choice == "1":
                 text = input("\nEnter text to encode: ")
                 result = encode_base64(text)
+
                 print("\nEncoded Base64:")
                 print(result)
 
