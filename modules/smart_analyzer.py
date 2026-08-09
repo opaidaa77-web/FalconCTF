@@ -6,6 +6,7 @@ from modules.strings_extractor import extract_strings
 from modules.interesting_strings import analyze_interesting_strings
 from modules.analysis_router import choose_analysis
 from modules.binary_analyzer import analyze_binary
+from modules.flag_detector import detect_flags
 
 
 def smart_analyze(file_path):
@@ -47,8 +48,15 @@ def smart_analyze(file_path):
             print("SHA256 :", hashes["SHA256"])
 
         strings = extract_strings(file_path)
+        combined_text = "\n".join(strings)
+        detected_flags = detect_flags(combined_text)
 
         print("\nStrings Found:", len(strings))
+        
+        if detected_flags:
+           print("\nDetected Flags:")
+        for flag in detected_flags:
+            print(" -", flag)
 
         findings = analyze_interesting_strings(strings)
 
