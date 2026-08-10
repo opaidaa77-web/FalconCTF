@@ -14,12 +14,18 @@ from modules.scoring_engine import calculate_interest_score
 from modules.report_generator import generate_report
 from modules.archive_analyzer import analyze_archive
 from modules.recommendation_engine import generate_recommendations
+from modules.encoding_analyzer import analyze_encoded_data
+
+
+def add_unique(target_list, value):
+    if value not in target_list:
+        target_list.append(value)
 
 
 def smart_analyze(file_path, archive_password=None):
     if not os.path.isfile(file_path):
         print("Error: File not found.")
-        return
+        return None
 
     print("\n" + "=" * 55)
     print("FalconCTF Smart Analysis Engine")
@@ -51,7 +57,7 @@ def smart_analyze(file_path, archive_password=None):
             print("[+]", readable_name)
 
         # -------------------------------------------------
-        # Run file-type specific analysis
+        # File-type specific analysis
         # -------------------------------------------------
 
         if "binary_analysis" in analysis_plan:
@@ -143,19 +149,96 @@ def smart_analyze(file_path, archive_password=None):
             print("SHA256 :", hashes["SHA256"])
 
         # -------------------------------------------------
-        # Strings and flag detection
+        # Strings
         # -------------------------------------------------
 
         strings = extract_strings(file_path)
 
         combined_text = "\n".join(strings)
-        detected_flags = detect_flags(combined_text)
 
-        for archive_flag in archive_results["flags"]:
-            if archive_flag not in detected_flags:
-                detected_flags.append(archive_flag)
+        detected_flags = detect_flags(
+            combined_text
+        )
+
+        # -------------------------------------------------
+        # Automatic encoded-data analysis
+        # -------------------------------------------------
+
+        encoding_results = analyze_encoded_data(
+            strings
+        )
+
+        for decoded_flag in encoding_results[
+            "decoded_flags"
+        ]:
+            add_unique(
+                detected_flags,
+                decoded_flag
+            )
+
+        for archive_flag in archive_results[
+            "flags"
+        ]:
+            add_unique(
+                detected_flags,
+                archive_flag
+            )
 
         print("\nStrings Found:", len(strings))
+
+        # -------------------------------------------------
+        # Base64 results
+        # -------------------------------------------------
+
+        if encoding_results["base64"]:
+            print("\nDetected Base64 Data:")
+
+            for finding in encoding_results[
+                "base64"
+            ][:10]:
+                print(
+                    " [+] Decoded:",
+                    finding["decoded"]
+                )
+
+        # -------------------------------------------------
+        # Hex results
+        # -------------------------------------------------
+
+        if encoding_results["hex"]:
+            print("\nDetected Hex Data:")
+
+            for finding in encoding_results[
+                "hex"
+            ][:10]:
+                print(
+                    " [+] Decoded:",
+                    finding["decoded"]
+                )
+
+        # -------------------------------------------------
+        # Recursive Encoding Chain
+        # -------------------------------------------------
+
+        if encoding_results.get(
+            "recursive_layers"
+        ):
+            print("\n" + "=" * 55)
+            print("FalconCTF Recursive Encoding Chain")
+            print("=" * 55)
+
+            for layer in encoding_results[
+                "recursive_layers"
+            ][:20]:
+                print(
+                    f"Depth {layer['depth']} | "
+                    f"{layer['type'].upper()} -> "
+                    f"{layer['decoded']}"
+                )
+
+        # -------------------------------------------------
+        # Detected Flags
+        # -------------------------------------------------
 
         if detected_flags:
             print("\nDetected Flags:")
@@ -175,56 +258,155 @@ def smart_analyze(file_path, archive_password=None):
                 "ips": [],
                 "keywords": []
             }
+
         else:
-            findings = analyze_interesting_strings(strings)
+            findings = analyze_interesting_strings(
+                strings
+            )
 
+        # -------------------------------------------------
         # Merge archive keywords
+        # -------------------------------------------------
+
         if archive_results["keywords"]:
-            findings.setdefault("keywords", [])
+            findings.setdefault(
+                "keywords",
+                []
+            )
 
-            for keyword in archive_results["keywords"]:
-                if keyword not in findings["keywords"]:
-                    findings["keywords"].append(keyword)
+            for keyword in archive_results[
+                "keywords"
+            ]:
+                add_unique(
+                    findings["keywords"],
+                    keyword
+                )
 
+        # -------------------------------------------------
         # Merge interesting archive files
-        if archive_results["interesting_files"]:
-            findings.setdefault("archive_files", [])
+        # -------------------------------------------------
 
-            for archive_file in archive_results["interesting_files"]:
-                if archive_file not in findings["archive_files"]:
-                    findings["archive_files"].append(
-                        archive_file
-                    )
+        if archive_results[
+            "interesting_files"
+        ]:
+            findings.setdefault(
+                "archive_files",
+                []
+            )
 
+            for archive_file in archive_results[
+                "interesting_files"
+            ]:
+                add_unique(
+                    findings["archive_files"],
+                    archive_file
+                )
+
+        # -------------------------------------------------
         # Merge encrypted archive files
-        if archive_results["encrypted_files"]:
-            findings.setdefault("encrypted_files", [])
+        # -------------------------------------------------
+
+        if archive_results[
+            "encrypted_files"
+        ]:
+            findings.setdefault(
+                "encrypted_files",
+                []
+            )
 
             for encrypted_file in archive_results[
                 "encrypted_files"
             ]:
-                if (
+                add_unique(
+                    findings["encrypted_files"],
                     encrypted_file
-                    not in findings["encrypted_files"]
-                ):
-                    findings["encrypted_files"].append(
-                        encrypted_file
-                    )
+                )
 
-        # Merge successfully decrypted archive files
-        if archive_results["decrypted_files"]:
-            findings.setdefault("decrypted_files", [])
+        # -------------------------------------------------
+        # Merge decrypted archive files
+        # -------------------------------------------------
+
+        if archive_results[
+            "decrypted_files"
+        ]:
+            findings.setdefault(
+                "decrypted_files",
+                []
+            )
 
             for decrypted_file in archive_results[
                 "decrypted_files"
             ]:
-                if (
+                add_unique(
+                    findings["decrypted_files"],
                     decrypted_file
-                    not in findings["decrypted_files"]
-                ):
-                    findings["decrypted_files"].append(
-                        decrypted_file
-                    )
+                )
+
+        # -------------------------------------------------
+        # Merge Base64 findings
+        # -------------------------------------------------
+
+        if encoding_results["base64"]:
+            findings.setdefault(
+                "base64_decoded",
+                []
+            )
+
+            for item in encoding_results[
+                "base64"
+            ]:
+                decoded = item["decoded"]
+
+                add_unique(
+                    findings["base64_decoded"],
+                    decoded
+                )
+
+        # -------------------------------------------------
+        # Merge Hex findings
+        # -------------------------------------------------
+
+        if encoding_results["hex"]:
+            findings.setdefault(
+                "hex_decoded",
+                []
+            )
+
+            for item in encoding_results[
+                "hex"
+            ]:
+                decoded = item["decoded"]
+
+                add_unique(
+                    findings["hex_decoded"],
+                    decoded
+                )
+
+        # -------------------------------------------------
+        # Merge Recursive Encoding Chain
+        # -------------------------------------------------
+
+        if encoding_results.get(
+            "recursive_layers"
+        ):
+            findings.setdefault(
+                "encoding_chain",
+                []
+            )
+
+            for layer in encoding_results[
+                "recursive_layers"
+            ]:
+                chain_entry = (
+                    f"Depth {layer['depth']} | "
+                    f"{layer['type'].upper()} -> "
+                    f"{layer['decoded']}"
+                )
+
+                add_unique(
+                    findings["encoding_chain"],
+                    chain_entry
+                )
 
         # -------------------------------------------------
         # Interest scoring
@@ -239,14 +421,26 @@ def smart_analyze(file_path, archive_password=None):
         print("FalconCTF Interest Score")
         print("=" * 55)
 
-        print("Score :", f"{score_result['score']}/100")
-        print("Level :", score_result["level"])
+        print(
+            "Score :",
+            f"{score_result['score']}/100"
+        )
+
+        print(
+            "Level :",
+            score_result["level"]
+        )
 
         if score_result["reasons"]:
             print("\nReasons:")
 
-            for reason in score_result["reasons"]:
-                print(" [+]", reason)
+            for reason in score_result[
+                "reasons"
+            ]:
+                print(
+                    " [+]",
+                    reason
+                )
 
         # -------------------------------------------------
         # Interesting findings output
@@ -262,10 +456,15 @@ def smart_analyze(file_path, archive_password=None):
             if items:
                 found_anything = True
 
-                print(f"\n{category.upper()}:")
+                print(
+                    f"\n{category.upper()}:"
+                )
 
                 for item in items[:20]:
-                    print(" -", item)
+                    print(
+                        " -",
+                        item
+                    )
 
                 if len(items) > 20:
                     print(
@@ -301,6 +500,7 @@ def smart_analyze(file_path, archive_password=None):
                 print(
                     f"[{index}] {recommendation}"
                 )
+
         else:
             print(
                 "No additional recommendations generated."
@@ -323,29 +523,43 @@ def smart_analyze(file_path, archive_password=None):
         print("\nReport Generated:")
         print(report_path)
 
+        # -------------------------------------------------
+        # Return structured results
+        # -------------------------------------------------
+
         return {
             "file_path": file_path,
             "file_type": file_type,
             "hashes": hashes,
             "findings": findings,
             "detected_flags": detected_flags,
+            "encoding_results": encoding_results,
             "score_result": score_result,
             "recommendations": recommendations,
             "archive_results": archive_results,
             "report_path": report_path
         }
 
-    except (OSError, PermissionError) as error:
-        print("Analysis error:", error)
+    except (
+        OSError,
+        PermissionError
+    ) as error:
+        print(
+            "Analysis error:",
+            error
+        )
+
         return None
 
 
 if __name__ == "__main__":
     if len(sys.argv) not in (2, 3):
         print(
-            "Usage: python3 -m modules.smart_analyzer "
+            "Usage: python3 -m "
+            "modules.smart_analyzer "
             "<file> [archive_password]"
         )
+
         sys.exit(1)
 
     target_file = sys.argv[1]
