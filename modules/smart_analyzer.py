@@ -11,6 +11,8 @@ from modules.metadata_analyzer import analyze_metadata
 from modules.scoring_engine import calculate_interest_score
 from modules.report_generator import generate_report
 from modules.archive_analyzer import analyze_archive
+from modules.recommendation_engine import generate_recommendations
+
 
 def smart_analyze(file_path):
     if not os.path.isfile(file_path):
@@ -42,6 +44,10 @@ def smart_analyze(file_path):
             readable_name = analysis.replace("_", " ").title()
             print("[+]", readable_name)
 
+        # -------------------------------------------------
+        # Run file-type specific analysis
+        # -------------------------------------------------
+
         if "binary_analysis" in analysis_plan:
             analyze_binary(file_path)
 
@@ -51,15 +57,23 @@ def smart_analyze(file_path):
         if "metadata_analysis" in analysis_plan:
             analyze_metadata(file_path)
 
+        # -------------------------------------------------
+        # Archive analysis
+        # -------------------------------------------------
+
         archive_results = {
-        "flags": [],
-        "keywords": [],
-        "interesting_files": [],
-        "encrypted_files": []
+            "flags": [],
+            "keywords": [],
+            "interesting_files": [],
+            "encrypted_files": []
         }
 
         if "archive_analysis" in analysis_plan:
-           archive_results = analyze_archive(file_path)
+            archive_results = analyze_archive(file_path)
+
+        # -------------------------------------------------
+        # Hash analysis
+        # -------------------------------------------------
 
         hashes = calculate_hashes(file_path)
 
@@ -68,6 +82,10 @@ def smart_analyze(file_path):
             print("MD5    :", hashes["MD5"])
             print("SHA1   :", hashes["SHA1"])
             print("SHA256 :", hashes["SHA256"])
+
+        # -------------------------------------------------
+        # Strings and flag detection
+        # -------------------------------------------------
 
         strings = extract_strings(file_path)
 
@@ -82,39 +100,57 @@ def smart_analyze(file_path):
 
         if detected_flags:
             print("\nDetected Flags:")
+
             for flag in detected_flags:
                 print(" -", flag)
 
-        if "archive_analysis" in analysis_plan:
-           findings = {
-                    "flags": [],
-                    "urls": [],
-                    "emails": [],
-                    "ips": [],
-                    "keywords": []
-                    }
-        else:
-             findings = analyze_interesting_strings(strings)
+        # -------------------------------------------------
+        # Interesting findings
+        # -------------------------------------------------
 
+        if "archive_analysis" in analysis_plan:
+            findings = {
+                "flags": [],
+                "urls": [],
+                "emails": [],
+                "ips": [],
+                "keywords": []
+            }
+        else:
+            findings = analyze_interesting_strings(strings)
+
+        # Merge archive keywords
         if archive_results["keywords"]:
             findings.setdefault("keywords", [])
+
             for keyword in archive_results["keywords"]:
                 if keyword not in findings["keywords"]:
                     findings["keywords"].append(keyword)
 
+        # Merge interesting archive files
         if archive_results["interesting_files"]:
             findings.setdefault("archive_files", [])
+
             for archive_file in archive_results["interesting_files"]:
                 if archive_file not in findings["archive_files"]:
                     findings["archive_files"].append(archive_file)
 
+        # Merge encrypted archive files
         if archive_results["encrypted_files"]:
             findings.setdefault("encrypted_files", [])
+
             for encrypted_file in archive_results["encrypted_files"]:
                 if encrypted_file not in findings["encrypted_files"]:
                     findings["encrypted_files"].append(encrypted_file)
 
-        score_result = calculate_interest_score(findings, detected_flags)
+        # -------------------------------------------------
+        # Interest scoring
+        # -------------------------------------------------
+
+        score_result = calculate_interest_score(
+            findings,
+            detected_flags
+        )
 
         print("\n" + "=" * 55)
         print("FalconCTF Interest Score")
@@ -124,10 +160,14 @@ def smart_analyze(file_path):
         print("Level :", score_result["level"])
 
         if score_result["reasons"]:
-           print("\nReasons:")
-        for reason in score_result["reasons"]:
-            print(" [+]", reason)
+            print("\nReasons:")
 
+            for reason in score_result["reasons"]:
+                print(" [+]", reason)
+
+        # -------------------------------------------------
+        # Interesting findings output
+        # -------------------------------------------------
 
         print("\n" + "=" * 55)
         print("Interesting Findings")
@@ -138,16 +178,46 @@ def smart_analyze(file_path):
         for category, items in findings.items():
             if items:
                 found_anything = True
+
                 print(f"\n{category.upper()}:")
 
                 for item in items[:20]:
                     print(" -", item)
 
                 if len(items) > 20:
-                    print(f" ... and {len(items) - 20} more.")
+                    print(
+                        f" ... and {len(items) - 20} more."
+                    )
 
         if not found_anything:
-            print("\nNo obvious interesting findings detected.")
+            print(
+                "\nNo obvious interesting findings detected."
+            )
+
+        # -------------------------------------------------
+        # Recommendation Engine
+        # -------------------------------------------------
+
+        recommendations = generate_recommendations(
+            file_type=file_type,
+            findings=findings,
+            detected_flags=detected_flags,
+            score_result=score_result
+        )
+
+        print("\n" + "=" * 55)
+        print("FalconCTF Recommended Next Steps")
+        print("=" * 55)
+
+        for index, recommendation in enumerate(
+            recommendations,
+            start=1
+        ):
+            print(f"[{index}] {recommendation}")
+
+        # -------------------------------------------------
+        # Report generation
+        # -------------------------------------------------
 
         report_path = generate_report(
         file_path=file_path,
@@ -155,7 +225,8 @@ def smart_analyze(file_path):
         hashes=hashes,
         findings=findings,
         detected_flags=detected_flags,
-        score_result=score_result
+        score_result=score_result,
+        recommendations=recommendations
         )
 
         print("\nReport Generated:")
@@ -169,7 +240,9 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) != 2:
-        print("Usage: python3 -m modules.smart_analyzer <file>")
+        print(
+            "Usage: python3 -m modules.smart_analyzer <file>"
+        )
         sys.exit(1)
 
     smart_analyze(sys.argv[1])
