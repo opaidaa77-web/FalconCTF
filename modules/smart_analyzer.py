@@ -85,7 +85,34 @@ def smart_analyze(file_path):
             for flag in detected_flags:
                 print(" -", flag)
 
-        findings = analyze_interesting_strings(strings)
+        if "archive_analysis" in analysis_plan:
+           findings = {
+                    "flags": [],
+                    "urls": [],
+                    "emails": [],
+                    "ips": [],
+                    "keywords": []
+                    }
+        else:
+             findings = analyze_interesting_strings(strings)
+
+        if archive_results["keywords"]:
+            findings.setdefault("keywords", [])
+            for keyword in archive_results["keywords"]:
+                if keyword not in findings["keywords"]:
+                    findings["keywords"].append(keyword)
+
+        if archive_results["interesting_files"]:
+            findings.setdefault("archive_files", [])
+            for archive_file in archive_results["interesting_files"]:
+                if archive_file not in findings["archive_files"]:
+                    findings["archive_files"].append(archive_file)
+
+        if archive_results["encrypted_files"]:
+            findings.setdefault("encrypted_files", [])
+            for encrypted_file in archive_results["encrypted_files"]:
+                if encrypted_file not in findings["encrypted_files"]:
+                    findings["encrypted_files"].append(encrypted_file)
 
         score_result = calculate_interest_score(findings, detected_flags)
 
