@@ -10,6 +10,7 @@ from modules.flag_detector import detect_flags
 from modules.metadata_analyzer import analyze_metadata
 from modules.scoring_engine import calculate_interest_score
 from modules.report_generator import generate_report
+from modules.archive_analyzer import analyze_archive
 
 def smart_analyze(file_path):
     if not os.path.isfile(file_path):
@@ -49,6 +50,9 @@ def smart_analyze(file_path):
 
         if "metadata_analysis" in analysis_plan:
             analyze_metadata(file_path)
+
+        if "archive_analysis" in analysis_plan:
+           analyze_archive(file_path)
 
         hashes = calculate_hashes(file_path)
 
