@@ -7,6 +7,7 @@ from modules.interesting_strings import analyze_interesting_strings
 from modules.analysis_router import choose_analysis
 from modules.binary_analyzer import analyze_binary
 from modules.flag_detector import detect_flags
+from modules.metadata_analyzer import analyze_metadata
 
 
 def smart_analyze(file_path):
@@ -30,6 +31,7 @@ def smart_analyze(file_path):
 
         print("\nDetected File Type:")
         print(file_type)
+
         analysis_plan = choose_analysis(file_type)
 
         print("\nRecommended Analysis Plan:")
@@ -37,10 +39,16 @@ def smart_analyze(file_path):
         for analysis in analysis_plan:
             readable_name = analysis.replace("_", " ").title()
             print("[+]", readable_name)
+
         if "binary_analysis" in analysis_plan:
             analyze_binary(file_path)
+
         if "hex_analysis" in analysis_plan:
-           analyze_hex(file_path)
+            analyze_hex(file_path)
+
+        if "metadata_analysis" in analysis_plan:
+            analyze_metadata(file_path)
+
         hashes = calculate_hashes(file_path)
 
         if hashes:
@@ -50,15 +58,16 @@ def smart_analyze(file_path):
             print("SHA256 :", hashes["SHA256"])
 
         strings = extract_strings(file_path)
+
         combined_text = "\n".join(strings)
         detected_flags = detect_flags(combined_text)
 
         print("\nStrings Found:", len(strings))
-        
+
         if detected_flags:
-           print("\nDetected Flags:")
-        for flag in detected_flags:
-            print(" -", flag)
+            print("\nDetected Flags:")
+            for flag in detected_flags:
+                print(" -", flag)
 
         findings = analyze_interesting_strings(strings)
 
@@ -84,3 +93,13 @@ def smart_analyze(file_path):
 
     except (OSError, PermissionError) as error:
         print("Analysis error:", error)
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 2:
+        print("Usage: python3 -m modules.smart_analyzer <file>")
+        sys.exit(1)
+
+    smart_analyze(sys.argv[1])
