@@ -1,28 +1,37 @@
+# ==========================================
+# FalconCTF - Git Ignore
+# ==========================================
+
 # Python cache
 __pycache__/
-*.pyc
+*.py[cod]
 
 # Virtual environments
 venv/
+.venv/
+env/
 .env/
 
-# VS Code
+# IDE / Editor
 .vscode/
+.idea/
 
 # Logs
 *.log
-__pycache__/
-*.py[cod]
-# Python cache
-__pycache__/
-*.py[cod]
 
-# Backup files
+# Backup / temporary files
 *.backup
+*.bak
+*.tmp
 
-# FalconCTF test files
-test_sample.bin
+# Generated FalconCTF reports
 reports/
-# Local test files
-archive_test/
+
+# Local development test files
+test_sample.bin
 test_archive.zip
+archive_test/
+
+# OS generated files
+.DS_Store
+Thumbs.db
