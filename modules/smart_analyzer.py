@@ -9,6 +9,7 @@ from modules.binary_analyzer import analyze_binary
 from modules.flag_detector import detect_flags
 from modules.metadata_analyzer import analyze_metadata
 from modules.scoring_engine import calculate_interest_score
+from modules.report_generator import generate_report
 
 def smart_analyze(file_path):
     if not os.path.isfile(file_path):
@@ -105,6 +106,18 @@ def smart_analyze(file_path):
 
         if not found_anything:
             print("\nNo obvious interesting findings detected.")
+
+        report_path = generate_report(
+        file_path=file_path,
+        file_type=file_type,
+        hashes=hashes,
+        findings=findings,
+        detected_flags=detected_flags,
+        score_result=score_result
+        )
+
+        print("\nReport Generated:")
+        print(report_path)
 
     except (OSError, PermissionError) as error:
         print("Analysis error:", error)
