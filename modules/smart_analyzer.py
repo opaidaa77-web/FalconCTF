@@ -1,4 +1,6 @@
 import os
+import sys
+from getpass import getpass
 
 from modules.hash_analyzer import calculate_hashes
 from modules.hex_analyzer import detect_file_type, analyze_hex
@@ -14,7 +16,7 @@ from modules.archive_analyzer import analyze_archive
 from modules.recommendation_engine import generate_recommendations
 
 
-def smart_analyze(file_path):
+def smart_analyze(file_path, archive_password=None):
     if not os.path.isfile(file_path):
         print("Error: File not found.")
         return
@@ -28,6 +30,10 @@ def smart_analyze(file_path):
     print("Size :", os.path.getsize(file_path), "bytes")
 
     try:
+        # -------------------------------------------------
+        # File type detection
+        # -------------------------------------------------
+
         with open(file_path, "rb") as file:
             header = file.read(64)
 
@@ -69,7 +75,61 @@ def smart_analyze(file_path):
         }
 
         if "archive_analysis" in analysis_plan:
-            archive_results = analyze_archive(file_path)
+            archive_results = analyze_archive(
+                file_path,
+                password=archive_password
+            )
+
+            # If encrypted files were found and no password
+            # was supplied, ask the user for one.
+            if (
+                archive_results["encrypted_files"]
+                and archive_password is None
+                and sys.stdin.isatty()
+            ):
+                print("\n" + "=" * 55)
+                print("Encrypted ZIP Content Detected")
+                print("=" * 55)
+
+                print(
+                    "[!] FalconCTF found encrypted content "
+                    "inside this archive."
+                )
+
+                answer = input(
+                    "[?] Do you want to enter a password? "
+                    "[y/N]: "
+                ).strip().lower()
+
+                if answer in ("y", "yes"):
+                    password_input = getpass(
+                        "[?] ZIP password: "
+                    )
+
+                    if password_input:
+                        print(
+                            "\n[*] Re-analyzing archive "
+                            "with supplied password..."
+                        )
+
+                        archive_results = analyze_archive(
+                            file_path,
+                            password=password_input
+                        )
+
+                        archive_password = password_input
+
+                    else:
+                        print(
+                            "[!] Empty password supplied. "
+                            "Continuing without decryption."
+                        )
+
+                else:
+                    print(
+                        "[*] Continuing without "
+                        "decrypting protected content."
+                    )
 
         # -------------------------------------------------
         # Hash analysis
@@ -133,15 +193,24 @@ def smart_analyze(file_path):
 
             for archive_file in archive_results["interesting_files"]:
                 if archive_file not in findings["archive_files"]:
-                    findings["archive_files"].append(archive_file)
+                    findings["archive_files"].append(
+                        archive_file
+                    )
 
         # Merge encrypted archive files
         if archive_results["encrypted_files"]:
             findings.setdefault("encrypted_files", [])
 
-            for encrypted_file in archive_results["encrypted_files"]:
-                if encrypted_file not in findings["encrypted_files"]:
-                    findings["encrypted_files"].append(encrypted_file)
+            for encrypted_file in archive_results[
+                "encrypted_files"
+            ]:
+                if (
+                    encrypted_file
+                    not in findings["encrypted_files"]
+                ):
+                    findings["encrypted_files"].append(
+                        encrypted_file
+                    )
 
         # -------------------------------------------------
         # Interest scoring
@@ -186,7 +255,8 @@ def smart_analyze(file_path):
 
                 if len(items) > 20:
                     print(
-                        f" ... and {len(items) - 20} more."
+                        f" ... and "
+                        f"{len(items) - 20} more."
                     )
 
         if not found_anything:
@@ -209,40 +279,69 @@ def smart_analyze(file_path):
         print("FalconCTF Recommended Next Steps")
         print("=" * 55)
 
-        for index, recommendation in enumerate(
-            recommendations,
-            start=1
-        ):
-            print(f"[{index}] {recommendation}")
+        if recommendations:
+            for index, recommendation in enumerate(
+                recommendations,
+                start=1
+            ):
+                print(
+                    f"[{index}] {recommendation}"
+                )
+        else:
+            print(
+                "No additional recommendations generated."
+            )
 
         # -------------------------------------------------
         # Report generation
         # -------------------------------------------------
 
         report_path = generate_report(
-        file_path=file_path,
-        file_type=file_type,
-        hashes=hashes,
-        findings=findings,
-        detected_flags=detected_flags,
-        score_result=score_result,
-        recommendations=recommendations
+            file_path=file_path,
+            file_type=file_type,
+            hashes=hashes,
+            findings=findings,
+            detected_flags=detected_flags,
+            score_result=score_result,
+            recommendations=recommendations
         )
 
         print("\nReport Generated:")
         print(report_path)
 
+        return {
+            "file_path": file_path,
+            "file_type": file_type,
+            "hashes": hashes,
+            "findings": findings,
+            "detected_flags": detected_flags,
+            "score_result": score_result,
+            "recommendations": recommendations,
+            "archive_results": archive_results,
+            "report_path": report_path
+        }
+
     except (OSError, PermissionError) as error:
         print("Analysis error:", error)
+        return None
 
 
 if __name__ == "__main__":
-    import sys
-
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3):
         print(
-            "Usage: python3 -m modules.smart_analyzer <file>"
+            "Usage: python3 -m modules.smart_analyzer "
+            "<file> [archive_password]"
         )
         sys.exit(1)
 
-    smart_analyze(sys.argv[1])
+    target_file = sys.argv[1]
+
+    password = None
+
+    if len(sys.argv) == 3:
+        password = sys.argv[2]
+
+    smart_analyze(
+        target_file,
+        archive_password=password
+    )
