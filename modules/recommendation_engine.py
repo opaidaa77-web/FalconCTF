@@ -6,21 +6,14 @@ def generate_recommendations(
 ):
     recommendations = []
 
-    detected_flags = (
-        detected_flags or []
-    )
-
-    score_result = (
-        score_result or {}
-    )
+    detected_flags = detected_flags or []
+    score_result = score_result or {}
 
     def add(text):
         if text not in recommendations:
             recommendations.append(text)
 
-    file_type_lower = (
-        file_type.lower()
-    )
+    file_type_lower = file_type.lower()
 
     # -------------------------------------------------
     # Flag discovered
@@ -37,49 +30,66 @@ def generate_recommendations(
     # -------------------------------------------------
 
     encrypted_files = set(
-        findings.get(
-            "encrypted_files",
-            []
-        )
+        findings.get("encrypted_files", [])
     )
 
     decrypted_files = set(
-        findings.get(
-            "decrypted_files",
-            []
-        )
+        findings.get("decrypted_files", [])
     )
 
     unresolved_encrypted = (
-        encrypted_files
-        - decrypted_files
+        encrypted_files - decrypted_files
     )
 
     if unresolved_encrypted:
         add(
-            "Encrypted archive content remains "
-            "locked. Obtain or identify the "
-            "correct password and analyze the "
-            "protected files."
+            "Encrypted archive content remains locked. "
+            "Obtain or identify the correct password and "
+            "analyze the protected files."
         )
 
     if decrypted_files:
         add(
-            "Encrypted archive content was "
-            "successfully decrypted. Continue "
-            "analyzing the recovered content."
+            "Encrypted archive content was successfully "
+            "decrypted. Continue analyzing the recovered "
+            "content."
+        )
+
+    # -------------------------------------------------
+    # Encoded data
+    # -------------------------------------------------
+
+    if findings.get("base64_decoded"):
+        add(
+            "Base64 encoded content was successfully "
+            "decoded. Review the decoded data for flags, "
+            "secrets or additional encoded layers."
+        )
+
+    if findings.get("hex_decoded"):
+        add(
+            "Hex encoded content was successfully decoded. "
+            "Inspect the decoded data for flags, secrets "
+            "or additional encoded layers."
+        )
+
+    if (
+        findings.get("base64_decoded")
+        or findings.get("hex_decoded")
+    ):
+        add(
+            "Check decoded content for nested or repeated "
+            "encoding that may require another decoding pass."
         )
 
     # -------------------------------------------------
     # Interesting archive files
     # -------------------------------------------------
 
-    if findings.get(
-        "archive_files"
-    ):
+    if findings.get("archive_files"):
         add(
-            "Inspect the interesting files "
-            "discovered inside the archive."
+            "Inspect the interesting files discovered "
+            "inside the archive."
         )
 
     # -------------------------------------------------
@@ -88,34 +98,28 @@ def generate_recommendations(
 
     if "elf" in file_type_lower:
         add(
-            "Inspect readable strings, symbols "
-            "and imported functions in the "
-            "ELF binary."
+            "Inspect readable strings, symbols and imported "
+            "functions in the ELF binary."
         )
 
         add(
-            "Continue with static reverse "
-            "engineering if the flag is not "
-            "directly exposed."
+            "Continue with static reverse engineering if "
+            "the flag is not directly exposed."
         )
 
     # -------------------------------------------------
     # PE
     # -------------------------------------------------
 
-    if (
-        "pe executable"
-        in file_type_lower
-    ):
+    if "pe executable" in file_type_lower:
         add(
-            "Inspect PE strings, imports and "
-            "suspicious embedded data."
+            "Inspect PE strings, imports and suspicious "
+            "embedded data."
         )
 
         add(
-            "Consider static reverse "
-            "engineering if further analysis "
-            "is required."
+            "Consider static reverse engineering if further "
+            "analysis is required."
         )
 
     # -------------------------------------------------
@@ -127,8 +131,8 @@ def generate_recommendations(
         or "jpeg" in file_type_lower
     ):
         add(
-            "Inspect image metadata and search "
-            "for hidden or appended data."
+            "Inspect image metadata and search for hidden "
+            "or appended data."
         )
 
     # -------------------------------------------------
@@ -137,9 +141,8 @@ def generate_recommendations(
 
     if "pdf" in file_type_lower:
         add(
-            "Inspect PDF metadata, embedded "
-            "strings and possible embedded "
-            "objects."
+            "Inspect PDF metadata, embedded strings and "
+            "possible embedded objects."
         )
 
     # -------------------------------------------------
@@ -148,9 +151,8 @@ def generate_recommendations(
 
     if "zip" in file_type_lower:
         add(
-            "Review archive structure and "
-            "nested files for hidden CTF "
-            "artifacts."
+            "Review archive structure and nested files for "
+            "hidden CTF artifacts."
         )
 
     # -------------------------------------------------
@@ -159,45 +161,38 @@ def generate_recommendations(
 
     if findings.get("urls"):
         add(
-            "Review detected URLs for "
-            "challenge-related context or "
-            "indicators."
+            "Review detected URLs for challenge-related "
+            "context or indicators."
         )
 
     if findings.get("ips"):
         add(
-            "Investigate detected IP addresses "
-            "if they are relevant to the "
-            "challenge."
+            "Investigate detected IP addresses if they are "
+            "relevant to the challenge."
         )
 
     if findings.get("emails"):
         add(
-            "Review detected email addresses "
-            "for possible challenge context."
+            "Review detected email addresses for possible "
+            "challenge context."
         )
 
     if findings.get("keywords"):
         add(
-            "Inspect the locations containing "
-            "sensitive keywords such as flag, "
-            "password, key or secret."
+            "Inspect the locations containing sensitive "
+            "keywords such as flag, password, key or secret."
         )
 
     # -------------------------------------------------
     # Interest score
     # -------------------------------------------------
 
-    score = score_result.get(
-        "score",
-        0
-    )
+    score = score_result.get("score", 0)
 
     if score >= 50:
         add(
-            "Prioritize this file because "
-            "FalconCTF detected multiple "
-            "high-interest indicators."
+            "Prioritize this file because FalconCTF detected "
+            "multiple high-interest indicators."
         )
 
     # -------------------------------------------------
@@ -206,9 +201,8 @@ def generate_recommendations(
 
     if not recommendations:
         add(
-            "No strong indicators were "
-            "detected. Continue with manual "
-            "inspection and deeper analysis."
+            "No strong indicators were detected. Continue "
+            "with manual inspection and deeper analysis."
         )
 
     return recommendations
