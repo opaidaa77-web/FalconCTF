@@ -23,3 +23,6 @@ __pycache__/
 # FalconCTF test files
 test_sample.bin
 reports/
+# Local test files
+archive_test/
+test_archive.zip
