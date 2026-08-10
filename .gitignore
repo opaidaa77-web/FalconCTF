@@ -22,3 +22,4 @@ __pycache__/
 
 # FalconCTF test files
 test_sample.bin
+reports/
