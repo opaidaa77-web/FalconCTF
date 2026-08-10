@@ -71,7 +71,8 @@ def smart_analyze(file_path, archive_password=None):
             "flags": [],
             "keywords": [],
             "interesting_files": [],
-            "encrypted_files": []
+            "encrypted_files": [],
+            "decrypted_files": []
         }
 
         if "archive_analysis" in analysis_plan:
@@ -80,8 +81,6 @@ def smart_analyze(file_path, archive_password=None):
                 password=archive_password
             )
 
-            # If encrypted files were found and no password
-            # was supplied, ask the user for one.
             if (
                 archive_results["encrypted_files"]
                 and archive_password is None
@@ -210,6 +209,21 @@ def smart_analyze(file_path, archive_password=None):
                 ):
                     findings["encrypted_files"].append(
                         encrypted_file
+                    )
+
+        # Merge successfully decrypted archive files
+        if archive_results["decrypted_files"]:
+            findings.setdefault("decrypted_files", [])
+
+            for decrypted_file in archive_results[
+                "decrypted_files"
+            ]:
+                if (
+                    decrypted_file
+                    not in findings["decrypted_files"]
+                ):
+                    findings["decrypted_files"].append(
+                        decrypted_file
                     )
 
         # -------------------------------------------------
