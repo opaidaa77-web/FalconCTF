@@ -7,7 +7,7 @@ MAX_ENCODING_DEPTH = 3
 
 
 BASE64_PATTERN = re.compile(
-    r"(?<![A-Za-z0-9+/=])"
+    r"(?<![A-Za-z0-9+/])"
     r"[A-Za-z0-9+/]{12,}={0,2}"
     r"(?![A-Za-z0-9+/=])"
 )
