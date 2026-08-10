@@ -8,7 +8,7 @@ from modules.analysis_router import choose_analysis
 from modules.binary_analyzer import analyze_binary
 from modules.flag_detector import detect_flags
 from modules.metadata_analyzer import analyze_metadata
-
+from modules.scoring_engine import calculate_interest_score
 
 def smart_analyze(file_path):
     if not os.path.isfile(file_path):
@@ -70,6 +70,21 @@ def smart_analyze(file_path):
                 print(" -", flag)
 
         findings = analyze_interesting_strings(strings)
+
+        score_result = calculate_interest_score(findings, detected_flags)
+
+        print("\n" + "=" * 55)
+        print("FalconCTF Interest Score")
+        print("=" * 55)
+
+        print("Score :", f"{score_result['score']}/100")
+        print("Level :", score_result["level"])
+
+        if score_result["reasons"]:
+           print("\nReasons:")
+        for reason in score_result["reasons"]:
+            print(" [+]", reason)
+
 
         print("\n" + "=" * 55)
         print("Interesting Findings")
