@@ -7,13 +7,20 @@ MAX_FILE_SIZE = 1024 * 1024  # 1 MB per file
 
 
 def analyze_archive(file_path):
+    results = {
+        "flags": [],
+        "keywords": [],
+        "interesting_files": [],
+        "encrypted_files": []
+    }
+
     print("\n" + "=" * 55)
     print("Archive Analysis")
     print("=" * 55)
 
     if not zipfile.is_zipfile(file_path):
         print("[-] File is not a valid ZIP archive.")
-        return
+        return results
 
     suspicious_extensions = {
         ".exe", ".dll", ".bin", ".sh", ".py",
@@ -38,7 +45,7 @@ def analyze_archive(file_path):
 
             if not members:
                 print("[-] Archive is empty.")
-                return
+                return results
 
             print("\nArchive Contents:")
 
@@ -58,11 +65,18 @@ def analyze_archive(file_path):
                 if extension in suspicious_extensions:
                     print(f"   [!] Interesting extension: {extension}")
 
+                    if name not in results["interesting_files"]:
+                        results["interesting_files"].append(name)
+
                 if any(keyword in lower_name for keyword in interesting_names):
                     print("   [!] Interesting filename detected")
 
+                    if name not in results["interesting_files"]:
+                        results["interesting_files"].append(name)
+
                 if member.flag_bits & 0x1:
                     print("   [!] Encrypted file - content not scanned")
+                    results["encrypted_files"].append(name)
                     continue
 
                 if size > MAX_FILE_SIZE:
@@ -82,10 +96,21 @@ def analyze_archive(file_path):
                 for flag in flags:
                     print(f"   [FLAG] {flag}")
 
+                    if flag not in results["flags"]:
+                        results["flags"].append(flag)
+
+                lower_text = text.lower()
+
                 for keyword in interesting_names:
-                    if keyword in text.lower():
+                    if keyword in lower_text:
                         print(f"   [!] Sensitive content keyword: {keyword}")
+
+                        finding = f"{name}: {keyword}"
+
+                        if finding not in results["keywords"]:
+                            results["keywords"].append(finding)
 
     except (OSError, zipfile.BadZipFile) as error:
         print("[-] Archive analysis error:", error)
 
+    return results

@@ -51,8 +51,15 @@ def smart_analyze(file_path):
         if "metadata_analysis" in analysis_plan:
             analyze_metadata(file_path)
 
+        archive_results = {
+        "flags": [],
+        "keywords": [],
+        "interesting_files": [],
+        "encrypted_files": []
+        }
+
         if "archive_analysis" in analysis_plan:
-           analyze_archive(file_path)
+           archive_results = analyze_archive(file_path)
 
         hashes = calculate_hashes(file_path)
 
@@ -66,6 +73,10 @@ def smart_analyze(file_path):
 
         combined_text = "\n".join(strings)
         detected_flags = detect_flags(combined_text)
+
+        for archive_flag in archive_results["flags"]:
+            if archive_flag not in detected_flags:
+                detected_flags.append(archive_flag)
 
         print("\nStrings Found:", len(strings))
 
