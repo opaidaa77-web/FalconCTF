@@ -133,6 +133,97 @@ def generate_solve_plan(
         )
 
     # -------------------------------------------------
+    # Decoded Payload Intelligence
+    # -------------------------------------------------
+
+    decoded_payloads = encoding_results.get(
+        "payloads",
+        []
+    )
+
+    for payload in decoded_payloads:
+        payload_route = str(
+            payload.get(
+                "route",
+                ""
+            )
+        ).lower()
+
+        payload_type = str(
+            payload.get(
+                "payload_type",
+                "Unknown Payload"
+            )
+        )
+
+        source_encoding = str(
+            payload.get(
+                "source_encoding",
+                "encoded data"
+            )
+        ).upper()
+
+        confidence = payload.get(
+            "confidence",
+            0
+        )
+
+        if payload_route == "archive_analysis":
+            add_step(
+                steps,
+                95,
+                "Analyze the decoded archive payload.",
+                (
+                    f"{source_encoding} decoding revealed "
+                    f"{payload_type} with {confidence}% confidence."
+                )
+            )
+
+        elif payload_route == "binary_analysis":
+            add_step(
+                steps,
+                95,
+                "Perform static analysis on the decoded executable payload.",
+                (
+                    f"{source_encoding} decoding revealed "
+                    f"{payload_type} with {confidence}% confidence."
+                )
+            )
+
+        elif payload_route == "forensics":
+            add_step(
+                steps,
+                90,
+                "Inspect the decoded forensic payload.",
+                (
+                    f"{source_encoding} decoding revealed "
+                    f"{payload_type} with {confidence}% confidence."
+                )
+            )
+
+        elif payload_route == "encoding_analysis":
+            add_step(
+                steps,
+                88,
+                "Continue analyzing the decoded encoding layer.",
+                (
+                    f"{source_encoding} decoding revealed "
+                    "another encoded payload."
+                )
+            )
+
+        elif payload_route == "verify_flag":
+            add_step(
+                steps,
+                100,
+                "Verify the flag recovered from the decoded payload.",
+                (
+                    f"{source_encoding} decoding revealed "
+                    "a flag-like payload."
+                )
+            )
+
+    # -------------------------------------------------
     # Archive intelligence
     # -------------------------------------------------
 

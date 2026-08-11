@@ -237,6 +237,46 @@ def smart_analyze(file_path, archive_password=None):
                     f"{layer['decoded']}"
                 )
 
+
+        # -------------------------------------------------
+        # Payload Intelligence
+        # -------------------------------------------------
+
+        if encoding_results.get(
+            "payloads"
+        ):
+            print("\n" + "=" * 55)
+            print("FalconCTF Payload Intelligence")
+            print("=" * 55)
+
+            for payload in encoding_results[
+                "payloads"
+            ][:20]:
+                print(
+                    "\nSource Encoding :",
+                    payload["source_encoding"].upper()
+                )
+
+                print(
+                    "Payload Type    :",
+                    payload["payload_type"]
+                )
+
+                print(
+                    "Confidence      :",
+                    f"{payload['confidence']}%"
+                )
+
+                print(
+                    "Next Route      :",
+                    payload["route"]
+                )
+
+                print(
+                    "Reason          :",
+                    payload["reason"]
+                )
+
         # -------------------------------------------------
         # Detected Flags
         # -------------------------------------------------
@@ -404,6 +444,35 @@ def smart_analyze(file_path, archive_password=None):
                     findings["encoding_chain"],
                     chain_entry
                 )
+
+
+        # -------------------------------------------------
+        # Merge Payload Intelligence
+        # -------------------------------------------------
+
+        if encoding_results.get(
+            "payloads"
+        ):
+            findings.setdefault(
+                "payload_intelligence",
+                []
+            )
+
+            for payload in encoding_results[
+                "payloads"
+            ]:
+                payload_entry = (
+                    f"{payload['source_encoding'].upper()} -> "
+                    f"{payload['payload_type']} | "
+                    f"Confidence {payload['confidence']}% | "
+                    f"Route: {payload['route']}"
+                )
+
+                add_unique(
+                    findings["payload_intelligence"],
+                    payload_entry
+                )
+
 
         # -------------------------------------------------
         # Challenge Classification

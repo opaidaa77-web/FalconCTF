@@ -157,6 +157,99 @@ def classify_challenge(
         )
 
     # -------------------------------------------------
+    # Payload Intelligence indicators
+    # -------------------------------------------------
+
+    payloads = encoding_results.get(
+        "payloads",
+        []
+    )
+
+    payload_routes = {
+        str(
+            payload.get(
+                "route",
+                ""
+            )
+        ).lower()
+        for payload in payloads
+    }
+
+    payload_sources = {
+        str(
+            payload.get(
+                "source_encoding",
+                ""
+            )
+        ).lower()
+        for payload in payloads
+    }
+
+    if payloads:
+        if (
+            "base64" in payload_sources
+            or "hex" in payload_sources
+        ):
+            scores[
+                "Encoding / Crypto"
+            ] += 30
+
+            reasons[
+                "Encoding / Crypto"
+            ].append(
+                "Encoded content produced a meaningful "
+                "decoded payload."
+            )
+
+        if "archive_analysis" in payload_routes:
+            scores["Archive"] += 75
+
+            reasons["Archive"].append(
+                "A decoded archive payload was detected."
+            )
+
+        if "binary_analysis" in payload_routes:
+            scores[
+                "Reverse Engineering"
+            ] += 75
+
+            reasons[
+                "Reverse Engineering"
+            ].append(
+                "A decoded executable payload was detected."
+            )
+
+        if "forensics" in payload_routes:
+            scores["Forensics"] += 70
+
+            reasons["Forensics"].append(
+                "A decoded forensic payload was detected."
+            )
+
+        if "encoding_analysis" in payload_routes:
+            scores[
+                "Encoding / Crypto"
+            ] += 25
+
+            reasons[
+                "Encoding / Crypto"
+            ].append(
+                "Decoded data contains another encoding layer."
+            )
+
+        if "verify_flag" in payload_routes:
+            scores[
+                "Encoding / Crypto"
+            ] += 20
+
+            reasons[
+                "Encoding / Crypto"
+            ].append(
+                "A flag candidate was recovered from "
+                "decoded payload data."
+            )
+
+    # -------------------------------------------------
     # Findings-based indicators
     # -------------------------------------------------
 
