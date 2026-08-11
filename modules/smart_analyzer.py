@@ -554,7 +554,8 @@ def smart_analyze(file_path, archive_password=None):
 
         score_result = calculate_interest_score(
             findings,
-            detected_flags
+            detected_flags,
+            encoding_results=encoding_results
         )
 
         print("\n" + "=" * 55)
@@ -625,7 +626,8 @@ def smart_analyze(file_path, archive_password=None):
             file_type=file_type,
             findings=findings,
             detected_flags=detected_flags,
-            score_result=score_result
+            score_result=score_result,
+            encoding_results=encoding_results
         )
 
         print("\n" + "=" * 55)

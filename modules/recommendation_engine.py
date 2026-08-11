@@ -2,12 +2,14 @@ def generate_recommendations(
     file_type,
     findings,
     detected_flags=None,
-    score_result=None
+    score_result=None,
+    encoding_results=None
 ):
     recommendations = []
 
     detected_flags = detected_flags or []
     score_result = score_result or {}
+    encoding_results = encoding_results or {}
 
     def add(text):
         if text not in recommendations:
@@ -81,6 +83,67 @@ def generate_recommendations(
             "Check decoded content for nested or repeated "
             "encoding that may require another decoding pass."
         )
+
+    # -------------------------------------------------
+    # Decoded Payload Intelligence
+    # -------------------------------------------------
+
+    decoded_payloads = encoding_results.get(
+        "payloads",
+        []
+    )
+
+    for payload in decoded_payloads:
+        route = str(
+            payload.get(
+                "route",
+                ""
+            )
+        ).lower()
+
+        payload_type = str(
+            payload.get(
+                "payload_type",
+                "decoded payload"
+            )
+        )
+
+        if route == "archive_analysis":
+            add(
+                f"Analyze the decoded {payload_type} and inspect "
+                "its internal files, nested content and hidden artifacts."
+            )
+
+        elif route == "binary_analysis":
+            add(
+                f"Perform static analysis on the decoded {payload_type}, "
+                "including strings, symbols, imports and program structure."
+            )
+
+        elif route == "forensics":
+            add(
+                f"Inspect the decoded {payload_type} for metadata, "
+                "embedded content and hidden or appended data."
+            )
+
+        elif route == "encoding_analysis":
+            add(
+                "Continue decoding the recovered payload because "
+                "another encoding layer was detected."
+            )
+
+        elif route == "verify_flag":
+            add(
+                "Validate the flag candidate recovered from "
+                "the decoded payload before submission."
+            )
+
+        elif route == "stop_recursive_decoding":
+            add(
+                "Stop automatic recursive decoding for this payload "
+                "and inspect it manually because its decoded quality "
+                "is too low for reliable automatic processing."
+            )
 
     # -------------------------------------------------
     # Interesting archive files

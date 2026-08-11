@@ -1,8 +1,13 @@
-def calculate_interest_score(findings, detected_flags=None):
+def calculate_interest_score(
+    findings,
+    detected_flags=None,
+    encoding_results=None
+):
     score = 0
     reasons = []
 
     detected_flags = detected_flags or []
+    encoding_results = encoding_results or {}
 
     # -------------------------------------------------
     # 1. CTF Flags
@@ -206,6 +211,81 @@ def calculate_interest_score(findings, detected_flags=None):
 
         reasons.append(
             f"Flag recovered through recursive decoding: +{bonus}"
+        )
+
+    # -------------------------------------------------
+    # 5. Decoded Payload Intelligence
+    # -------------------------------------------------
+
+    payloads = encoding_results.get(
+        "payloads",
+        []
+    )
+
+    payload_routes = set()
+
+    for payload in payloads:
+        confidence = payload.get(
+            "confidence",
+            0
+        )
+
+        if confidence < 70:
+            continue
+
+        route = str(
+            payload.get(
+                "route",
+                ""
+            )
+        ).lower()
+
+        if route:
+            payload_routes.add(
+                route
+            )
+
+    if "archive_analysis" in payload_routes:
+        points = 25
+        score += points
+
+        reasons.append(
+            f"Decoded archive payload detected: +{points}"
+        )
+
+    if "binary_analysis" in payload_routes:
+        points = 30
+        score += points
+
+        reasons.append(
+            f"Decoded executable payload detected: +{points}"
+        )
+
+    if "forensics" in payload_routes:
+        points = 25
+        score += points
+
+        reasons.append(
+            f"Decoded forensic payload detected: +{points}"
+        )
+
+    if "encoding_analysis" in payload_routes:
+        points = 15
+        score += points
+
+        reasons.append(
+            f"Additional encoded payload layer detected: +{points}"
+        )
+
+    if (
+        "verify_flag" in payload_routes
+        and not detected_flags
+    ):
+        points = 25
+        score += points
+
+        reasons.append(
+            f"Flag-like decoded payload detected: +{points}"
         )
 
     # -------------------------------------------------
