@@ -687,37 +687,71 @@ def inspect_payload(payload):
                 # Rejected Base64 false positive
                 # -------------------------------------
 
-                result["payload_type"] = (
-                    "Rejected Base64 Candidate"
-                )
+                text_chunks = text.split()
 
-                result["confidence"] = 90
+                chunk_lengths = [
+                    len(chunk)
+                    for chunk in text_chunks
+                ]
 
-                result["route"] = (
-                    "stop_recursive_decoding"
-                )
-
-                result["reason"] = (
-                    "The payload has valid Base64 syntax, "
-                    "but the decoded bytes failed meaningful-data "
-                    "quality checks. Recursive decoding was stopped "
-                    "to reduce false positives."
-                )
-
-                result["decoded_preview"] = (
-                    create_preview(
-                        decoded
+                looks_like_wrapped_base64 = (
+                    len(text_chunks) > 1
+                    and all(
+                        len(chunk) >= 8
+                        for chunk in text_chunks[:-1]
                     )
+                    and len(
+                        set(chunk_lengths[:-1])
+                    ) == 1
+                    and chunk_lengths[0] % 4 == 0
+                    and chunk_lengths[-1]
+                    <= chunk_lengths[0]
                 )
 
-                result["decoded_quality"] = round(
-                    quality,
-                    3
+                looks_like_plain_text = (
+                    len(text_chunks) >= 2
+                    and all(
+                        chunk.isalpha()
+                        for chunk in text_chunks
+                    )
+                    and not looks_like_wrapped_base64
                 )
 
-                return result
+                if not looks_like_plain_text:
+                    result["payload_type"] = (
+                        "Rejected Base64 Candidate"
+                    )
 
-        # ---------------------------------------------
+                    result["confidence"] = 90
+
+                    result["route"] = (
+                        "stop_recursive_decoding"
+                    )
+
+                    result["reason"] = (
+                        "The payload has valid Base64 syntax, "
+                        "but the decoded bytes failed meaningful-data "
+                        "quality checks. Recursive decoding was stopped "
+                        "to reduce false positives."
+                    )
+
+                    result["decoded_preview"] = (
+                        create_preview(
+                            decoded
+                        )
+                    )
+
+                    result["decoded_quality"] = round(
+                        quality,
+                        3
+                    )
+
+                    return result
+
+                # Natural readable words can accidentally
+                # contain only Base64 alphabet characters.
+                # Allow normal text analysis to continue.
+
         # Hex candidate
         # ---------------------------------------------
 
