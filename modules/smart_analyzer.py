@@ -675,7 +675,10 @@ def smart_analyze(file_path, archive_password=None):
             findings=findings,
             detected_flags=detected_flags,
             score_result=score_result,
-            recommendations=recommendations
+            recommendations=recommendations,
+            encoding_results=encoding_results,
+            classification_result=classification_result,
+            solve_plan=solve_plan
         )
 
         print("\nReport Generated:")

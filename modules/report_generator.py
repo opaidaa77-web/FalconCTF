@@ -10,8 +10,15 @@ def generate_report(
     detected_flags,
     score_result,
     recommendations=None,
+    encoding_results=None,
+    classification_result=None,
+    solve_plan=None,
     output_dir="reports"
 ):
+    encoding_results = encoding_results or {}
+    classification_result = classification_result or {}
+    solve_plan = solve_plan or []
+
     os.makedirs(output_dir, exist_ok=True)
 
     base_name = os.path.basename(file_path)
@@ -66,6 +73,135 @@ def generate_report(
         lines.append("No hashes available.")
 
     # -------------------------------------------------
+    # Challenge Classification
+    # -------------------------------------------------
+
+    lines.append("")
+    lines.append("Challenge Classification")
+    lines.append("-" * 60)
+
+    if classification_result:
+        lines.append(
+            f"Primary   : "
+            f"{classification_result.get('category', 'Unknown')} "
+            f"({classification_result.get('confidence', 0)}%)"
+        )
+
+        secondary_category = classification_result.get(
+            "secondary_category"
+        )
+
+        if secondary_category:
+            lines.append(
+                f"Secondary : "
+                f"{secondary_category} "
+                f"({classification_result.get('secondary_confidence', 0)}%)"
+            )
+
+        classification_reasons = classification_result.get(
+            "reasons",
+            []
+        )
+
+        if classification_reasons:
+            lines.append("")
+            lines.append("Reasons:")
+
+            for reason in classification_reasons:
+                lines.append(
+                    f"[+] {reason}"
+                )
+
+    else:
+        lines.append(
+            "No challenge classification available."
+        )
+
+    # -------------------------------------------------
+    # Payload Intelligence
+    # -------------------------------------------------
+
+    lines.append("")
+    lines.append("Payload Intelligence")
+    lines.append("-" * 60)
+
+    payloads = encoding_results.get(
+        "payloads",
+        []
+    )
+
+    if payloads:
+        for index, payload in enumerate(
+            payloads[:50],
+            start=1
+        ):
+            lines.append("")
+
+            lines.append(
+                f"[{index}] "
+                f"{payload.get('payload_type', 'Unknown Payload')}"
+            )
+
+            lines.append(
+                f"    Source Encoding : "
+                f"{str(payload.get('source_encoding', 'unknown')).upper()}"
+            )
+
+            lines.append(
+                f"    Confidence      : "
+                f"{payload.get('confidence', 0)}%"
+            )
+
+            lines.append(
+                f"    Route           : "
+                f"{payload.get('route', 'manual_inspection')}"
+            )
+
+            reason = payload.get(
+                "reason"
+            )
+
+            if reason:
+                lines.append(
+                    f"    Reason          : {reason}"
+                )
+
+            preview = payload.get(
+                "preview"
+            )
+
+            if preview:
+                lines.append(
+                    f"    Preview         : {preview}"
+                )
+
+    else:
+        lines.append(
+            "No decoded payload intelligence available."
+        )
+
+    # -------------------------------------------------
+    # Recursive Encoding Chain
+    # -------------------------------------------------
+
+    recursive_layers = encoding_results.get(
+        "recursive_layers",
+        []
+    )
+
+    if recursive_layers:
+        lines.append("")
+        lines.append("Recursive Encoding Chain")
+        lines.append("-" * 60)
+
+        for layer in recursive_layers[:50]:
+            lines.append(
+                f"Depth {layer.get('depth', '?')} | "
+                f"{str(layer.get('type', 'unknown')).upper()} -> "
+                f"{layer.get('decoded', '')}"
+            )
+
+    # -------------------------------------------------
     # Interest Score
     # -------------------------------------------------
 
@@ -111,12 +247,21 @@ def generate_report(
     # -------------------------------------------------
 
     lines.append("")
-    lines.append("Interesting Findings")
+    lines.append("Additional Interesting Findings")
     lines.append("-" * 60)
 
     found_anything = False
 
+    reserved_findings = {
+        "payload_intelligence",
+        "challenge_classification",
+        "encoding_chain"
+    }
+
     for category, items in findings.items():
+
+        if category in reserved_findings:
+            continue
 
         if items:
             found_anything = True
@@ -134,7 +279,7 @@ def generate_report(
 
     if not found_anything:
         lines.append(
-            "No obvious interesting findings detected."
+            "No additional interesting findings detected."
         )
 
     # -------------------------------------------------
@@ -160,6 +305,41 @@ def generate_report(
     else:
         lines.append(
             "No additional recommendations generated."
+        )
+
+    # -------------------------------------------------
+    # Intelligent Solve Plan
+    # -------------------------------------------------
+
+    lines.append("")
+    lines.append("Intelligent Solve Plan")
+    lines.append("-" * 60)
+
+    if solve_plan:
+        for index, step in enumerate(
+            solve_plan,
+            start=1
+        ):
+            lines.append("")
+
+            lines.append(
+                f"[{index}] "
+                f"{step.get('action', 'Manual inspection')}"
+            )
+
+            lines.append(
+                f"    Priority : "
+                f"{step.get('priority', 0)}"
+            )
+
+            lines.append(
+                f"    Reason   : "
+                f"{step.get('reason', 'No reason provided.')}"
+            )
+
+    else:
+        lines.append(
+            "No intelligent solve-plan steps generated."
         )
 
     # -------------------------------------------------
