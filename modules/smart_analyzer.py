@@ -15,7 +15,8 @@ from modules.report_generator import generate_report
 from modules.archive_analyzer import analyze_archive
 from modules.recommendation_engine import generate_recommendations
 from modules.encoding_analyzer import analyze_encoded_data
-
+from modules.challenge_classifier import classify_challenge
+from modules.solve_planner import generate_solve_plan, print_solve_plan
 
 def add_unique(target_list, value):
     if value not in target_list:
@@ -355,11 +356,9 @@ def smart_analyze(file_path, archive_password=None):
             for item in encoding_results[
                 "base64"
             ]:
-                decoded = item["decoded"]
-
                 add_unique(
                     findings["base64_decoded"],
-                    decoded
+                    item["decoded"]
                 )
 
         # -------------------------------------------------
@@ -375,11 +374,9 @@ def smart_analyze(file_path, archive_password=None):
             for item in encoding_results[
                 "hex"
             ]:
-                decoded = item["decoded"]
-
                 add_unique(
                     findings["hex_decoded"],
-                    decoded
+                    item["decoded"]
                 )
 
         # -------------------------------------------------
@@ -407,6 +404,80 @@ def smart_analyze(file_path, archive_password=None):
                     findings["encoding_chain"],
                     chain_entry
                 )
+
+        # -------------------------------------------------
+        # Challenge Classification
+        # -------------------------------------------------
+
+        classification_result = classify_challenge(
+            file_type=file_type,
+            analysis_plan=analysis_plan,
+            findings=findings,
+            encoding_results=encoding_results,
+            archive_results=archive_results
+        )
+
+        print("\n" + "=" * 55)
+        print("FalconCTF Challenge Classification")
+        print("=" * 55)
+
+        print(
+            "Likely Category :",
+            classification_result["category"]
+        )
+
+        print(
+            "Confidence      :",
+            f"{classification_result['confidence']}%"
+        )
+
+        if classification_result[
+            "secondary_category"
+        ]:
+            print(
+                "Secondary       :",
+                classification_result[
+                    "secondary_category"
+                ],
+                f"({classification_result['secondary_confidence']}%)"
+            )
+
+        if classification_result["reasons"]:
+            print("\nClassification Reasons:")
+
+            for reason in classification_result[
+                "reasons"
+            ]:
+                print(
+                    " [+]",
+                    reason
+                )
+
+        # Store classification in findings
+        findings.setdefault(
+            "challenge_classification",
+            []
+        )
+
+        add_unique(
+            findings["challenge_classification"],
+            (
+                f"{classification_result['category']} "
+                f"({classification_result['confidence']}%)"
+            )
+        )
+
+        if classification_result[
+            "secondary_category"
+        ]:
+            add_unique(
+                findings["challenge_classification"],
+                (
+                    "Secondary: "
+                    f"{classification_result['secondary_category']} "
+                    f"({classification_result['secondary_confidence']}%)"
+                )
+            )
 
         # -------------------------------------------------
         # Interest scoring
@@ -505,6 +576,22 @@ def smart_analyze(file_path, archive_password=None):
             print(
                 "No additional recommendations generated."
             )
+        # -------------------------------------------------
+        # Intelligent Solve Planner
+        # -------------------------------------------------
+
+        solve_plan = generate_solve_plan(
+        file_type=file_type,
+        findings=findings,
+        detected_flags=detected_flags,
+        encoding_results=encoding_results,
+        archive_results=archive_results,
+        classification_result=classification_result
+        )
+        print_solve_plan(
+            solve_plan
+        )
+
 
         # -------------------------------------------------
         # Report generation
@@ -534,8 +621,10 @@ def smart_analyze(file_path, archive_password=None):
             "findings": findings,
             "detected_flags": detected_flags,
             "encoding_results": encoding_results,
+            "classification_result": classification_result,
             "score_result": score_result,
             "recommendations": recommendations,
+            "solve_plan": solve_plan,
             "archive_results": archive_results,
             "report_path": report_path
         }
