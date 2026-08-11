@@ -1,14 +1,14 @@
 import base64
 import binascii
 import re
-
+from modules.payload_inspector import inspect_payload
 
 MAX_ENCODING_DEPTH = 3
 
 
 BASE64_PATTERN = re.compile(
     r"(?<![A-Za-z0-9+/])"
-    r"[A-Za-z0-9+/]{12,}={0,2}"
+    r"[A-Za-z0-9+/]{10,}={0,2}"
     r"(?![A-Za-z0-9+/=])"
 )
 
@@ -85,7 +85,7 @@ def is_probable_base64(value):
     return True
 
 
-def decode_base64_candidate(value):
+def decode_base64_bytes(value):
     if not is_probable_base64(value):
         return None
 
@@ -103,15 +103,10 @@ def decode_base64_candidate(value):
             validate=True
         )
 
-        decoded_text = decoded_bytes.decode(
-            "utf-8",
-            errors="ignore"
-        )
-
-        if not is_readable_text(decoded_text):
+        if not decoded_bytes:
             return None
 
-        return decoded_text
+        return decoded_bytes
 
     except (
         binascii.Error,
@@ -120,25 +115,68 @@ def decode_base64_candidate(value):
         return None
 
 
-def decode_hex_candidate(value):
+def decode_base64_candidate(value):
+    decoded_bytes = decode_base64_bytes(
+        value
+    )
+
+    if decoded_bytes is None:
+        return None
+
+    decoded_text = decoded_bytes.decode(
+        "utf-8",
+        errors="ignore"
+    )
+
+    if not is_readable_text(decoded_text):
+        return None
+
+    return decoded_text
+
+
+def decode_hex_bytes(value):
     if not is_probable_hex(value):
         return None
 
     try:
-        decoded_bytes = bytes.fromhex(value)
-
-        decoded_text = decoded_bytes.decode(
-            "utf-8",
-            errors="ignore"
+        decoded_bytes = bytes.fromhex(
+            value
         )
 
-        if not is_readable_text(decoded_text):
+        if not decoded_bytes:
             return None
 
-        return decoded_text
+        return decoded_bytes
 
     except ValueError:
         return None
+
+
+def decode_hex_candidate(value):
+    decoded_bytes = decode_hex_bytes(
+        value
+    )
+
+    if decoded_bytes is None:
+        return None
+
+    decoded_text = decoded_bytes.decode(
+        "utf-8",
+        errors="ignore"
+    )
+
+    if not is_readable_text(decoded_text):
+        return None
+
+    return decoded_text
+
+def inspect_decoded_payload(decoded_bytes):
+    if decoded_bytes is None:
+        return None
+
+    return inspect_payload(
+        decoded_bytes
+    )
 
 
 def extract_flags(text):
@@ -202,10 +240,240 @@ def analyze_encoded_data(strings):
         "base64": [],
         "hex": [],
         "decoded_flags": [],
-        "recursive_layers": []
+        "recursive_layers": [],
+        "payloads": []
     }
 
     visited = set()
+
+    def inspect_encoding_payloads(text, depth):
+        # -------------------------------------------------
+        # Base64 payload inspection
+        # -------------------------------------------------
+
+        base64_candidates = BASE64_PATTERN.findall(
+            text
+        )
+
+        for candidate in base64_candidates:
+            decoded_bytes = decode_base64_bytes(
+                candidate
+            )
+
+            if decoded_bytes is None:
+                continue
+
+            payload_result = inspect_decoded_payload(
+                decoded_bytes
+            )
+
+            if payload_result is None:
+                continue
+
+            payload_record = {
+                "depth": depth,
+                "source_encoding": "base64",
+                "encoded": candidate,
+                "payload_type": payload_result[
+                    "payload_type"
+                ],
+                "confidence": payload_result[
+                    "confidence"
+                ],
+                "route": payload_result[
+                    "route"
+                ],
+                "reason": payload_result[
+                    "reason"
+                ],
+                "preview": payload_result[
+                    "preview"
+                ]
+            }
+
+            if payload_record not in results[
+                "payloads"
+            ]:
+                results["payloads"].append(
+                    payload_record
+                )
+
+            for flag in payload_result.get(
+                "flags",
+                []
+            ):
+                add_unique(
+                    results["decoded_flags"],
+                    flag
+                )
+
+        # -------------------------------------------------
+        # HEX payload inspection
+        # -------------------------------------------------
+
+        hex_candidates = HEX_PATTERN.findall(
+            text
+        )
+
+        for candidate in hex_candidates:
+            decoded_bytes = decode_hex_bytes(
+                candidate
+            )
+
+            if decoded_bytes is None:
+                continue
+
+            payload_result = inspect_decoded_payload(
+                decoded_bytes
+            )
+
+            if payload_result is None:
+                continue
+
+            payload_record = {
+                "depth": depth,
+                "source_encoding": "hex",
+                "encoded": candidate,
+                "payload_type": payload_result[
+                    "payload_type"
+                ],
+                "confidence": payload_result[
+                    "confidence"
+                ],
+                "route": payload_result[
+                    "route"
+                ],
+                "reason": payload_result[
+                    "reason"
+                ],
+                "preview": payload_result[
+                    "preview"
+                ]
+            }
+
+            if payload_record not in results[
+                "payloads"
+            ]:
+                results["payloads"].append(
+                    payload_record
+                )
+
+            for flag in payload_result.get(
+                "flags",
+                []
+            ):
+                add_unique(
+                    results["decoded_flags"],
+                    flag
+                )
+
+    def process_text(text, depth):
+        if depth > MAX_ENCODING_DEPTH:
+            return
+
+        if not text:
+            return
+
+        # Prevent loops
+        if text in visited:
+            return
+
+        visited.add(text)
+
+        # -------------------------------------------------
+        # Check current layer for flags
+        # -------------------------------------------------
+
+        for flag in extract_flags(text):
+            add_unique(
+                results["decoded_flags"],
+                flag
+            )
+
+        # -------------------------------------------------
+        # Payload Intelligence
+        # -------------------------------------------------
+
+        inspect_encoding_payloads(
+            text,
+            depth
+        )
+
+        # -------------------------------------------------
+        # Traditional text-based encoding analysis
+        # -------------------------------------------------
+
+        findings = analyze_single_layer(
+            text
+        )
+
+        for finding in findings:
+            record = {
+                "depth": depth,
+                "type": finding["type"],
+                "encoded": finding["encoded"],
+                "decoded": finding["decoded"]
+            }
+
+            if record not in results[
+                "recursive_layers"
+            ]:
+                results[
+                    "recursive_layers"
+                ].append(
+                    record
+                )
+
+            simple_record = {
+                "encoded": finding["encoded"],
+                "decoded": finding["decoded"]
+            }
+
+            if finding["type"] == "base64":
+                if simple_record not in results[
+                    "base64"
+                ]:
+                    results["base64"].append(
+                        simple_record
+                    )
+
+            elif finding["type"] == "hex":
+                if simple_record not in results[
+                    "hex"
+                ]:
+                    results["hex"].append(
+                        simple_record
+                    )
+
+            # ---------------------------------------------
+            # Check decoded result for flags
+            # ---------------------------------------------
+
+            for flag in extract_flags(
+                finding["decoded"]
+            ):
+                add_unique(
+                    results["decoded_flags"],
+                    flag
+                )
+
+            # ---------------------------------------------
+            # Analyze next textual encoding layer
+            # ---------------------------------------------
+
+            if depth < MAX_ENCODING_DEPTH:
+                process_text(
+                    finding["decoded"],
+                    depth + 1
+                )
+
+    for text in strings:
+        process_text(
+            text,
+            1
+        )
+
+    return results
 
     def process_text(text, depth):
         if depth > MAX_ENCODING_DEPTH:
