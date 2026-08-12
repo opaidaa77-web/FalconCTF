@@ -8,6 +8,13 @@ from modules.payload_inspector import inspect_payload
 MAX_ENCODING_DEPTH = 3
 
 
+BINARY_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9])"
+    r"[01]{32,}"
+    r"(?![A-Za-z0-9])"
+)
+
+
 BASE64_PATTERN = re.compile(
     r"(?<![A-Za-z0-9+/])"
     r"[A-Za-z0-9+/]{10,}={0,2}"
@@ -45,8 +52,97 @@ def is_readable_text(text):
     return ratio >= 0.85
 
 
+def normalize_binary_text(value):
+    """
+    Remove whitespace from a possible binary bitstream.
+    """
+
+    if not isinstance(value, str):
+        return ""
+
+    return "".join(
+        value.split()
+    )
+
+
+def is_probable_binary(value):
+    """
+    Check whether a value looks like meaningful 8-bit
+    binary-encoded data.
+
+    The minimum length reduces false positives from short
+    numbers that happen to contain only 0 and 1.
+    """
+
+    cleaned = normalize_binary_text(
+        value
+    )
+
+    if len(cleaned) < 32:
+        return False
+
+    if len(cleaned) % 8 != 0:
+        return False
+
+    if not cleaned:
+        return False
+
+    if any(
+        char not in "01"
+        for char in cleaned
+    ):
+        return False
+
+    # Require both bit values to reduce obvious noise.
+    if "0" not in cleaned or "1" not in cleaned:
+        return False
+
+    return True
+
+
+def get_binary_candidates(text):
+    """
+    Extract binary bitstreams.
+
+    Supports both continuous bitstreams and streams wrapped
+    across whitespace-separated lines/groups.
+    """
+
+    candidates = []
+
+    cleaned = normalize_binary_text(
+        text
+    )
+
+    # Entire input consists only of binary digits/whitespace.
+    if is_probable_binary(cleaned):
+        candidates.append(
+            cleaned
+        )
+
+    # Also detect a standalone continuous binary sequence
+    # embedded in surrounding text.
+    for candidate in BINARY_PATTERN.findall(
+        text
+    ):
+        if (
+            is_probable_binary(candidate)
+            and candidate not in candidates
+        ):
+            candidates.append(
+                candidate
+            )
+
+    return candidates
+
+
 def is_probable_hex(value):
     if len(value) < 8:
+        return False
+
+    # Long 0/1 bitstreams are binary encoding,
+    # even though 0 and 1 are technically valid HEX digits.
+    if is_probable_binary(value):
         return False
 
     if len(value) % 2 != 0:
@@ -62,6 +158,11 @@ def is_probable_hex(value):
 
 def is_probable_base64(value):
     if len(value) < 12:
+        return False
+
+    # Binary bitstreams can also consist entirely of
+    # characters accepted by the Base64 alphabet.
+    if is_probable_binary(value):
         return False
 
     # Pure hexadecimal strings should be
@@ -85,6 +186,68 @@ def is_probable_base64(value):
         return False
 
     return True
+
+
+def decode_binary_bytes(value):
+    """
+    Decode an 8-bit binary bitstream into raw bytes.
+    """
+
+    if not is_probable_binary(value):
+        return None
+
+    cleaned = normalize_binary_text(
+        value
+    )
+
+    try:
+        decoded_bytes = bytes(
+            int(
+                cleaned[index:index + 8],
+                2
+            )
+            for index in range(
+                0,
+                len(cleaned),
+                8
+            )
+        )
+
+        if not decoded_bytes:
+            return None
+
+        return decoded_bytes
+
+    except ValueError:
+        return None
+
+
+def decode_binary_candidate(value):
+    """
+    Decode binary data when the result is readable text.
+
+    Raw binary payloads such as JPEG/ZIP/ELF are handled
+    separately by Payload Intelligence.
+    """
+
+    decoded_bytes = decode_binary_bytes(
+        value
+    )
+
+    if decoded_bytes is None:
+        return None
+
+    decoded_text = decoded_bytes.decode(
+        "utf-8",
+        errors="ignore"
+    )
+
+    if not is_readable_text(
+        decoded_text
+    ):
+        return None
+
+    return decoded_text
 
 
 def decode_base64_bytes(value):
@@ -288,6 +451,33 @@ def analyze_single_layer(text):
     findings = []
 
     # -------------------------------------------------
+    # Binary
+    # -------------------------------------------------
+
+    binary_candidates = get_binary_candidates(
+        text
+    )
+
+    for candidate in binary_candidates:
+        decoded = decode_binary_candidate(
+            candidate
+        )
+
+        if decoded is None:
+            continue
+
+        finding = {
+            "type": "binary",
+            "encoded": candidate,
+            "decoded": decoded
+        }
+
+        if finding not in findings:
+            findings.append(
+                finding
+            )
+
+    # -------------------------------------------------
     # Base64
     # -------------------------------------------------
 
@@ -342,6 +532,7 @@ def analyze_encoded_data(
     output_dir="output/decoded_payloads"
 ):
     results = {
+        "binary": [],
         "base64": [],
         "hex": [],
         "decoded_flags": [],
@@ -353,6 +544,79 @@ def analyze_encoded_data(
     saved_payload_paths = {}
 
     def inspect_encoding_payloads(text, depth):
+        # -------------------------------------------------
+        # Binary payload inspection
+        # -------------------------------------------------
+
+        binary_candidates = get_binary_candidates(
+            text
+        )
+
+        for candidate in binary_candidates:
+            decoded_bytes = decode_binary_bytes(
+                candidate
+            )
+
+            if decoded_bytes is None:
+                continue
+
+            payload_result = inspect_decoded_payload(
+                decoded_bytes
+            )
+
+            if payload_result is None:
+                continue
+
+            saved_path = None
+
+            if save_payloads:
+                saved_path = save_decoded_payload(
+                    decoded_bytes=decoded_bytes,
+                    payload_result=payload_result,
+                    source_encoding="binary",
+                    depth=depth,
+                    output_dir=output_dir,
+                    saved_payload_paths=saved_payload_paths
+                )
+
+            payload_record = {
+                "depth": depth,
+                "source_encoding": "binary",
+                "encoded": candidate,
+                "payload_type": payload_result[
+                    "payload_type"
+                ],
+                "confidence": payload_result[
+                    "confidence"
+                ],
+                "route": payload_result[
+                    "route"
+                ],
+                "reason": payload_result[
+                    "reason"
+                ],
+                "preview": payload_result[
+                    "preview"
+                ],
+                "saved_path": saved_path
+            }
+
+            if payload_record not in results[
+                "payloads"
+            ]:
+                results["payloads"].append(
+                    payload_record
+                )
+
+            for flag in payload_result.get(
+                "flags",
+                []
+            ):
+                add_unique(
+                    results["decoded_flags"],
+                    flag
+                )
+
         # -------------------------------------------------
         # Base64 payload inspection
         # -------------------------------------------------
@@ -561,7 +825,15 @@ def analyze_encoded_data(
                 "decoded": finding["decoded"]
             }
 
-            if finding["type"] == "base64":
+            if finding["type"] == "binary":
+                if simple_record not in results[
+                    "binary"
+                ]:
+                    results["binary"].append(
+                        simple_record
+                    )
+
+            elif finding["type"] == "base64":
                 if simple_record not in results[
                     "base64"
                 ]:
@@ -593,84 +865,6 @@ def analyze_encoded_data(
             # Analyze next textual encoding layer
             # ---------------------------------------------
 
-            if depth < MAX_ENCODING_DEPTH:
-                process_text(
-                    finding["decoded"],
-                    depth + 1
-                )
-
-    for text in strings:
-        process_text(
-            text,
-            1
-        )
-
-    return results
-
-    def process_text(text, depth):
-        if depth > MAX_ENCODING_DEPTH:
-            return
-
-        if not text:
-            return
-
-        # Prevent loops
-        if text in visited:
-            return
-
-        visited.add(text)
-
-        # Check current layer for flags
-        for flag in extract_flags(text):
-            add_unique(
-                results["decoded_flags"],
-                flag
-            )
-
-        findings = analyze_single_layer(text)
-
-        for finding in findings:
-            record = {
-                "depth": depth,
-                "type": finding["type"],
-                "encoded": finding["encoded"],
-                "decoded": finding["decoded"]
-            }
-
-            if record not in results[
-                "recursive_layers"
-            ]:
-                results[
-                    "recursive_layers"
-                ].append(record)
-
-            simple_record = {
-                "encoded": finding["encoded"],
-                "decoded": finding["decoded"]
-            }
-
-            if finding["type"] == "base64":
-                if simple_record not in results["base64"]:
-                    results["base64"].append(
-                        simple_record
-                    )
-
-            elif finding["type"] == "hex":
-                if simple_record not in results["hex"]:
-                    results["hex"].append(
-                        simple_record
-                    )
-
-            # Check decoded result for flags
-            for flag in extract_flags(
-                finding["decoded"]
-            ):
-                add_unique(
-                    results["decoded_flags"],
-                    flag
-                )
-
-            # Analyze next encoding layer
             if depth < MAX_ENCODING_DEPTH:
                 process_text(
                     finding["decoded"],

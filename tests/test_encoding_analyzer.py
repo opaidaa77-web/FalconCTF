@@ -175,3 +175,97 @@ def test_decoded_payload_export(tmp_path):
     assert saved_path.exists()
     assert saved_path.suffix == ".zip"
     assert saved_path.read_bytes() == raw_payload
+
+def _bytes_to_binary(data):
+    return "".join(
+        f"{byte:08b}"
+        for byte in data
+    )
+
+
+def test_binary_jpeg_payload_detection(tmp_path):
+    raw_payload = (
+        b"\xff\xd8\xff\xe0"
+        b"\x00\x10JFIF\x00\x01"
+        b"FALCONCTF-BINARY-TEST"
+    )
+
+    encoded = _bytes_to_binary(
+        raw_payload
+    )
+
+    results = analyze_encoded_data(
+        [encoded],
+        save_payloads=True,
+        output_dir=str(tmp_path)
+    )
+
+    binary_payloads = [
+        payload
+        for payload in results["payloads"]
+        if payload["source_encoding"] == "binary"
+    ]
+
+    assert binary_payloads
+
+    payload = binary_payloads[0]
+
+    assert payload["payload_type"] == "JPEG Image"
+    assert payload["route"] == "forensics"
+    assert payload["confidence"] == 100
+
+    saved_path = Path(
+        payload["saved_path"]
+    )
+
+    assert saved_path.exists()
+    assert saved_path.suffix == ".jpg"
+    assert saved_path.read_bytes() == raw_payload
+
+
+def test_binary_payload_not_misclassified_as_hex():
+    raw_payload = (
+        b"\xff\xd8\xff\xe0"
+        b"\x00\x10JFIF"
+    )
+
+    encoded = _bytes_to_binary(
+        raw_payload
+    )
+
+    results = analyze_encoded_data(
+        [encoded]
+    )
+
+    assert any(
+        payload["source_encoding"] == "binary"
+        for payload in results["payloads"]
+    )
+
+    assert not any(
+        payload["source_encoding"] == "hex"
+        for payload in results["payloads"]
+    )
+
+
+def test_binary_encoded_flag():
+    flag = (
+        "FalconCTF{binary_encoding_test}"
+    )
+
+    encoded = _bytes_to_binary(
+        flag.encode()
+    )
+
+    results = analyze_encoded_data(
+        [encoded]
+    )
+
+    assert any(
+        item["decoded"] == flag
+        for item in results["binary"]
+    )
+
+    assert flag in results[
+        "decoded_flags"
+    ]
