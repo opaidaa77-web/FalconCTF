@@ -1,3 +1,5 @@
+import argparse
+
 from config.settings import *
 
 from modules.system_info import get_system_info
@@ -13,6 +15,10 @@ from modules.smart_analyzer import smart_analyze
 LINE_WIDTH = 64
 
 
+# =========================================================
+# Display helpers
+# =========================================================
+
 def print_separator(char="="):
     print(char * LINE_WIDTH)
 
@@ -20,8 +26,15 @@ def print_separator(char="="):
 def show_banner():
     print()
     print_separator()
-    print("                     FalconCTF Toolkit")
-    print("              Intelligent CTF Analysis Framework")
+
+    print(
+        "                     FalconCTF Toolkit"
+    )
+
+    print(
+        "              Intelligent CTF Analysis Framework"
+    )
+
     print_separator()
 
     print(f"Version : {VERSION}")
@@ -31,105 +44,27 @@ def show_banner():
 
     print(
         "Automated file analysis, flag detection, archive inspection,\n"
-        "encoding analysis, scoring, recommendations and reports."
+        "encoding analysis, payload intelligence, scoring,\n"
+        "recommendations, solve planning and professional reports."
     )
 
     print_separator()
 
 
-def show_menu():
-    print("\nMain Menu")
-    print("-" * LINE_WIDTH)
+# =========================================================
+# Shared analysis functions
+# =========================================================
 
-    print("[1] Smart Analysis        - Automated full analysis")
-    print("[2] File Analyzer         - Basic file inspection")
-    print("[3] Flag Detector         - Scan text for CTF flags")
-    print("[4] Strings Extractor     - Extract readable strings")
-    print("[5] Base64 Tool           - Encode / Decode Base64")
-    print("[6] Hex Analyzer          - Inspect file hex/header data")
-    print("[7] System Information    - Show environment details")
-    print("[8] Exit")
-
-    print("-" * LINE_WIDTH)
-
-
-def wait_for_enter():
-    try:
-        input("\nPress Enter to return to the main menu...")
-    except (KeyboardInterrupt, EOFError):
-        pass
-
-
-def run_smart_analysis():
-    print("\nSmart Analysis")
-    print("-" * LINE_WIDTH)
-
-    file_path = input(
-        "Enter challenge file path: "
-    ).strip()
-
-    if not file_path:
-        print("\n[-] No file path provided.")
-        return
-
-    smart_analyze(file_path)
-
-
-def run_file_analyzer():
-    print("\nFile Analyzer")
-    print("-" * LINE_WIDTH)
-
-    file_path = input(
-        "Enter file path: "
-    ).strip()
-
-    if not file_path:
-        print("\n[-] No file path provided.")
-        return
-
-    analyze_file(file_path)
-
-
-def run_flag_detector():
-    print("\nFlag Detector")
-    print("-" * LINE_WIDTH)
-
-    text = input(
-        "Enter text to scan: "
+def run_strings_analysis(file_path):
+    strings = extract_strings(
+        file_path
     )
-
-    flags = detect_flags(text)
-
-    if flags:
-        print("\n[+] Flags Found:")
-
-        for flag in flags:
-            print(" -", flag)
-
-    else:
-        print(
-            "\n[-] No obvious CTF flag pattern found."
-        )
-
-
-def run_strings_extractor():
-    print("\nStrings Extractor")
-    print("-" * LINE_WIDTH)
-
-    file_path = input(
-        "Enter file path: "
-    ).strip()
-
-    if not file_path:
-        print("\n[-] No file path provided.")
-        return
-
-    strings = extract_strings(file_path)
 
     if not strings:
         print(
             "\n[-] No readable strings found."
         )
+
         return
 
     print(
@@ -144,7 +79,8 @@ def run_strings_extractor():
 
     if len(strings) > 50:
         print(
-            f"\n... and {len(strings) - 50} more strings."
+            f"\n... and "
+            f"{len(strings) - 50} more strings."
         )
 
     findings = analyze_interesting_strings(
@@ -183,7 +119,148 @@ def run_strings_extractor():
         )
 
 
-def run_base64_tool():
+# =========================================================
+# Interactive menu
+# =========================================================
+
+def show_menu():
+    print("\nMain Menu")
+    print("-" * LINE_WIDTH)
+
+    print(
+        "[1] Smart Analysis        - Automated full analysis"
+    )
+
+    print(
+        "[2] File Analyzer         - Basic file inspection"
+    )
+
+    print(
+        "[3] Flag Detector         - Scan text for CTF flags"
+    )
+
+    print(
+        "[4] Strings Extractor     - Extract readable strings"
+    )
+
+    print(
+        "[5] Base64 Tool           - Encode / Decode Base64"
+    )
+
+    print(
+        "[6] Hex Analyzer          - Inspect file hex/header data"
+    )
+
+    print(
+        "[7] System Information    - Show environment details"
+    )
+
+    print("[8] Exit")
+
+    print("-" * LINE_WIDTH)
+
+
+def wait_for_enter():
+    try:
+        input(
+            "\nPress Enter to return to the main menu..."
+        )
+
+    except (
+        KeyboardInterrupt,
+        EOFError
+    ):
+        pass
+
+
+def run_smart_analysis_interactive():
+    print("\nSmart Analysis")
+    print("-" * LINE_WIDTH)
+
+    file_path = input(
+        "Enter challenge file path: "
+    ).strip()
+
+    if not file_path:
+        print(
+            "\n[-] No file path provided."
+        )
+
+        return
+
+    smart_analyze(
+        file_path
+    )
+
+
+def run_file_analyzer_interactive():
+    print("\nFile Analyzer")
+    print("-" * LINE_WIDTH)
+
+    file_path = input(
+        "Enter file path: "
+    ).strip()
+
+    if not file_path:
+        print(
+            "\n[-] No file path provided."
+        )
+
+        return
+
+    analyze_file(
+        file_path
+    )
+
+
+def run_flag_detector_interactive():
+    print("\nFlag Detector")
+    print("-" * LINE_WIDTH)
+
+    text = input(
+        "Enter text to scan: "
+    )
+
+    flags = detect_flags(
+        text
+    )
+
+    if flags:
+        print("\n[+] Flags Found:")
+
+        for flag in flags:
+            print(
+                " -",
+                flag
+            )
+
+    else:
+        print(
+            "\n[-] No obvious CTF flag pattern found."
+        )
+
+
+def run_strings_extractor_interactive():
+    print("\nStrings Extractor")
+    print("-" * LINE_WIDTH)
+
+    file_path = input(
+        "Enter file path: "
+    ).strip()
+
+    if not file_path:
+        print(
+            "\n[-] No file path provided."
+        )
+
+        return
+
+    run_strings_analysis(
+        file_path
+    )
+
+
+def run_base64_tool_interactive():
     print("\nBase64 Tool")
     print("-" * LINE_WIDTH)
 
@@ -200,15 +277,13 @@ def run_base64_tool():
             "\nEnter text to encode: "
         )
 
-        result = encode_base64(
-            text
-        )
-
         print(
             "\nEncoded Base64:"
         )
 
-        print(result)
+        print(
+            encode_base64(text)
+        )
 
     elif base64_choice == "2":
         text = input(
@@ -240,7 +315,7 @@ def run_base64_tool():
         )
 
 
-def run_hex_analyzer():
+def run_hex_analyzer_interactive():
     print("\nHex Analyzer")
     print("-" * LINE_WIDTH)
 
@@ -249,20 +324,18 @@ def run_hex_analyzer():
     ).strip()
 
     if not file_path:
-        print("\n[-] No file path provided.")
+        print(
+            "\n[-] No file path provided."
+        )
+
         return
 
-    analyze_hex(file_path)
+    analyze_hex(
+        file_path
+    )
 
 
-def run_system_info():
-    print("\nSystem Information")
-    print("-" * LINE_WIDTH)
-
-    get_system_info()
-
-
-def main():
+def interactive_menu():
     show_banner()
 
     while True:
@@ -274,37 +347,38 @@ def main():
             ).strip()
 
             if choice == "1":
-                run_smart_analysis()
+                run_smart_analysis_interactive()
                 wait_for_enter()
 
             elif choice == "2":
-                run_file_analyzer()
+                run_file_analyzer_interactive()
                 wait_for_enter()
 
             elif choice == "3":
-                run_flag_detector()
+                run_flag_detector_interactive()
                 wait_for_enter()
 
             elif choice == "4":
-                run_strings_extractor()
+                run_strings_extractor_interactive()
                 wait_for_enter()
 
             elif choice == "5":
-                run_base64_tool()
+                run_base64_tool_interactive()
                 wait_for_enter()
 
             elif choice == "6":
-                run_hex_analyzer()
+                run_hex_analyzer_interactive()
                 wait_for_enter()
 
             elif choice == "7":
-                run_system_info()
+                get_system_info()
                 wait_for_enter()
 
             elif choice == "8":
                 print(
                     "\nExiting FalconCTF. Goodbye."
                 )
+
                 break
 
             else:
@@ -322,8 +396,258 @@ def main():
             print(
                 "\n\nExiting FalconCTF."
             )
+
             break
 
 
+# =========================================================
+# Command-line interface
+# =========================================================
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        prog="falconctf",
+        description=(
+            "FalconCTF - Intelligent CTF Analysis Framework"
+        ),
+        epilog=(
+            "Example: falconctf analyze challenge.zip"
+        )
+    )
+
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"FalconCTF {VERSION}"
+    )
+
+    subparsers = parser.add_subparsers(
+        dest="command",
+        metavar="COMMAND"
+    )
+
+    # -----------------------------------------------------
+    # Smart Analysis
+    # -----------------------------------------------------
+
+    analyze_parser = subparsers.add_parser(
+        "analyze",
+        help=(
+            "Run FalconCTF intelligent analysis "
+            "against a challenge file."
+        )
+    )
+
+    analyze_parser.add_argument(
+        "file",
+        help="Challenge file to analyze."
+    )
+
+    analyze_parser.add_argument(
+        "-p",
+        "--password",
+        help=(
+            "Optional archive password."
+        )
+    )
+
+    # -----------------------------------------------------
+    # File Analyzer
+    # -----------------------------------------------------
+
+    file_parser = subparsers.add_parser(
+        "file",
+        help="Run basic file inspection."
+    )
+
+    file_parser.add_argument(
+        "file",
+        help="File to inspect."
+    )
+
+    # -----------------------------------------------------
+    # Flag Detector
+    # -----------------------------------------------------
+
+    flag_parser = subparsers.add_parser(
+        "flags",
+        help="Search text for CTF flag patterns."
+    )
+
+    flag_parser.add_argument(
+        "text",
+        help="Text to scan."
+    )
+
+    # -----------------------------------------------------
+    # Strings
+    # -----------------------------------------------------
+
+    strings_parser = subparsers.add_parser(
+        "strings",
+        help=(
+            "Extract and analyze readable strings."
+        )
+    )
+
+    strings_parser.add_argument(
+        "file",
+        help="File to analyze."
+    )
+
+    # -----------------------------------------------------
+    # Base64
+    # -----------------------------------------------------
+
+    base64_parser = subparsers.add_parser(
+        "base64",
+        help="Encode or decode Base64 data."
+    )
+
+    base64_group = (
+        base64_parser
+        .add_mutually_exclusive_group(
+            required=True
+        )
+    )
+
+    base64_group.add_argument(
+        "-e",
+        "--encode",
+        metavar="TEXT",
+        help="Encode text as Base64."
+    )
+
+    base64_group.add_argument(
+        "-d",
+        "--decode",
+        metavar="TEXT",
+        help="Decode Base64 text."
+    )
+
+    # -----------------------------------------------------
+    # Hex
+    # -----------------------------------------------------
+
+    hex_parser = subparsers.add_parser(
+        "hex",
+        help="Inspect file hex/header data."
+    )
+
+    hex_parser.add_argument(
+        "file",
+        help="File to inspect."
+    )
+
+    # -----------------------------------------------------
+    # System
+    # -----------------------------------------------------
+
+    subparsers.add_parser(
+        "system",
+        help="Display FalconCTF environment information."
+    )
+
+    return parser
+
+
+def cli():
+    parser = build_parser()
+
+    args = parser.parse_args()
+
+    # Running without arguments keeps the original
+    # interactive FalconCTF interface.
+    if args.command is None:
+        interactive_menu()
+        return 0
+
+    if args.command == "analyze":
+        result = smart_analyze(
+            args.file,
+            archive_password=args.password
+        )
+
+        return 0 if result is not None else 1
+
+    if args.command == "file":
+        analyze_file(
+            args.file
+        )
+
+        return 0
+
+    if args.command == "flags":
+        flags = detect_flags(
+            args.text
+        )
+
+        if flags:
+            for flag in flags:
+                print(flag)
+
+            return 0
+
+        print(
+            "No obvious CTF flag pattern found."
+        )
+
+        return 0
+
+    if args.command == "strings":
+        run_strings_analysis(
+            args.file
+        )
+
+        return 0
+
+    if args.command == "base64":
+        if args.encode is not None:
+            print(
+                encode_base64(
+                    args.encode
+                )
+            )
+
+            return 0
+
+        decoded = decode_base64(
+            args.decode
+        )
+
+        if decoded is None:
+            print(
+                "Error: Invalid Base64 input."
+            )
+
+            return 1
+
+        print(decoded)
+
+        return 0
+
+    if args.command == "hex":
+        analyze_hex(
+            args.file
+        )
+
+        return 0
+
+    if args.command == "system":
+        get_system_info()
+
+        return 0
+
+    parser.print_help()
+
+    return 1
+
+
+def main():
+    return cli()
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(
+        main()
+    )
