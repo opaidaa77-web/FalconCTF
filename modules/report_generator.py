@@ -175,6 +175,15 @@ def generate_report(
                     f"    Preview         : {preview}"
                 )
 
+            saved_path = payload.get(
+                "saved_path"
+            )
+
+            if saved_path:
+                lines.append(
+                    f"    Saved Payload   : {saved_path}"
+                )
+
     else:
         lines.append(
             "No decoded payload intelligence available."

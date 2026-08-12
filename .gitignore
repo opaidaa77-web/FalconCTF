@@ -35,3 +35,6 @@ archive_test/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Generated decoded payloads
+output/

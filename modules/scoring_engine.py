@@ -190,17 +190,18 @@ def calculate_interest_score(
             default=1
         )
 
-        points = min(
-            15,
-            max_depth * 5
-        )
+        if max_depth > 1:
+            points = min(
+                15,
+                max_depth * 5
+            )
 
-        score += points
+            score += points
 
-        reasons.append(
-            f"Recursive encoding chain detected "
-            f"(depth {max_depth}): +{points}"
-        )
+            reasons.append(
+                f"Recursive encoding chain detected "
+                f"(depth {max_depth}): +{points}"
+            )
 
     # Bonus when a real flag was recovered
     # through a recursive encoding chain.

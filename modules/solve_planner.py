@@ -122,15 +122,16 @@ def generate_solve_plan(
             default=0
         )
 
-        add_step(
-            steps,
-            92,
-            "Follow the recursive encoding chain to its final layer.",
-            (
-                "Multiple encoding layers were detected "
-                f"with a maximum depth of {maximum_depth}."
+        if maximum_depth > 1:
+            add_step(
+                steps,
+                92,
+                "Follow the recursive encoding chain to its final layer.",
+                (
+                    "Multiple encoding layers were detected "
+                    f"with a maximum depth of {maximum_depth}."
+                )
             )
-        )
 
     # -------------------------------------------------
     # Decoded Payload Intelligence

@@ -165,8 +165,20 @@ def smart_analyze(file_path, archive_password=None):
         # Automatic encoded-data analysis
         # -------------------------------------------------
 
+        payload_output_dir = os.path.join(
+            "output",
+            (
+                os.path.splitext(
+                    os.path.basename(file_path)
+                )[0]
+                + "_decoded"
+            )
+        )
+
         encoding_results = analyze_encoded_data(
-            strings
+            strings,
+            save_payloads=True,
+            output_dir=payload_output_dir
         )
 
         for decoded_flag in encoding_results[
@@ -276,6 +288,12 @@ def smart_analyze(file_path, archive_password=None):
                     "Reason          :",
                     payload["reason"]
                 )
+
+                if payload.get("saved_path"):
+                    print(
+                        "Saved Payload   :",
+                        payload["saved_path"]
+                    )
 
         # -------------------------------------------------
         # Detected Flags
@@ -467,6 +485,12 @@ def smart_analyze(file_path, archive_password=None):
                     f"Confidence {payload['confidence']}% | "
                     f"Route: {payload['route']}"
                 )
+
+                if payload.get("saved_path"):
+                    payload_entry += (
+                        f" | Saved: "
+                        f"{payload['saved_path']}"
+                    )
 
                 add_unique(
                     findings["payload_intelligence"],
