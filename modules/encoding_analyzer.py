@@ -1,5 +1,7 @@
 import base64
+import hashlib
 import binascii
+import os
 import re
 from modules.payload_inspector import inspect_payload
 
@@ -179,6 +181,105 @@ def inspect_decoded_payload(decoded_bytes):
     )
 
 
+def get_payload_extension(payload_result):
+    payload_type = str(
+        payload_result.get(
+            "payload_type",
+            ""
+        )
+    ).lower()
+
+    extension_map = (
+        ("zip archive", ".zip"),
+        ("7-zip", ".7z"),
+        ("rar", ".rar"),
+        ("gzip", ".gz"),
+        ("elf", ".elf"),
+        ("pe executable", ".exe"),
+        ("png", ".png"),
+        ("jpeg", ".jpg"),
+        ("gif", ".gif"),
+        ("pdf", ".pdf")
+    )
+
+    for indicator, extension in extension_map:
+        if indicator in payload_type:
+            return extension
+
+    return ".bin"
+
+
+def save_decoded_payload(
+    decoded_bytes,
+    payload_result,
+    source_encoding,
+    depth,
+    output_dir,
+    saved_payload_paths
+):
+    route = str(
+        payload_result.get(
+            "route",
+            ""
+        )
+    ).lower()
+
+    savable_routes = {
+        "archive_analysis",
+        "binary_analysis",
+        "forensics"
+    }
+
+    if route not in savable_routes:
+        return None
+
+    digest = hashlib.sha256(
+        decoded_bytes
+    ).hexdigest()
+
+    if digest in saved_payload_paths:
+        return saved_payload_paths[
+            digest
+        ]
+
+    os.makedirs(
+        output_dir,
+        exist_ok=True
+    )
+
+    extension = get_payload_extension(
+        payload_result
+    )
+
+    number = len(
+        saved_payload_paths
+    ) + 1
+
+    filename = (
+        f"decoded_payload_{number:03d}_"
+        f"{source_encoding}_d{depth}"
+        f"{extension}"
+    )
+
+    saved_path = os.path.join(
+        output_dir,
+        filename
+    )
+
+    with open(
+        saved_path,
+        "wb"
+    ) as payload_file:
+        payload_file.write(
+            decoded_bytes
+        )
+
+    saved_payload_paths[
+        digest
+    ] = saved_path
+
+    return saved_path
+
 def extract_flags(text):
     return FLAG_PATTERN.findall(text)
 
@@ -235,7 +336,11 @@ def analyze_single_layer(text):
     return findings
 
 
-def analyze_encoded_data(strings):
+def analyze_encoded_data(
+    strings,
+    save_payloads=False,
+    output_dir="output/decoded_payloads"
+):
     results = {
         "base64": [],
         "hex": [],
@@ -245,6 +350,7 @@ def analyze_encoded_data(strings):
     }
 
     visited = set()
+    saved_payload_paths = {}
 
     def inspect_encoding_payloads(text, depth):
         # -------------------------------------------------
@@ -270,6 +376,18 @@ def analyze_encoded_data(strings):
             if payload_result is None:
                 continue
 
+            saved_path = None
+
+            if save_payloads:
+                saved_path = save_decoded_payload(
+                    decoded_bytes=decoded_bytes,
+                    payload_result=payload_result,
+                    source_encoding="base64",
+                    depth=depth,
+                    output_dir=output_dir,
+                    saved_payload_paths=saved_payload_paths
+                )
+
             payload_record = {
                 "depth": depth,
                 "source_encoding": "base64",
@@ -290,6 +408,7 @@ def analyze_encoded_data(strings):
                     "preview"
                 ]
             }
+            payload_record["saved_path"] = saved_path
 
             if payload_record not in results[
                 "payloads"
@@ -330,6 +449,18 @@ def analyze_encoded_data(strings):
             if payload_result is None:
                 continue
 
+            saved_path = None
+
+            if save_payloads:
+                saved_path = save_decoded_payload(
+                    decoded_bytes=decoded_bytes,
+                    payload_result=payload_result,
+                    source_encoding="hex",
+                    depth=depth,
+                    output_dir=output_dir,
+                    saved_payload_paths=saved_payload_paths
+                )
+
             payload_record = {
                 "depth": depth,
                 "source_encoding": "hex",
@@ -350,6 +481,7 @@ def analyze_encoded_data(strings):
                     "preview"
                 ]
             }
+            payload_record["saved_path"] = saved_path
 
             if payload_record not in results[
                 "payloads"

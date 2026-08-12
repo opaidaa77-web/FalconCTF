@@ -143,3 +143,35 @@ def test_empty_input():
     assert results["decoded_flags"] == []
     assert results["recursive_layers"] == []
     assert results["payloads"] == []
+
+
+def test_decoded_payload_export(tmp_path):
+    raw_payload = (
+        b"PK\x03\x04FALCONCTF-DATA"
+    )
+
+    encoded = base64.b64encode(
+        raw_payload
+    ).decode()
+
+    results = analyze_encoded_data(
+        [encoded],
+        save_payloads=True,
+        output_dir=str(tmp_path)
+    )
+
+    exported = [
+        payload
+        for payload in results["payloads"]
+        if payload.get("saved_path")
+    ]
+
+    assert exported
+
+    saved_path = Path(
+        exported[0]["saved_path"]
+    )
+
+    assert saved_path.exists()
+    assert saved_path.suffix == ".zip"
+    assert saved_path.read_bytes() == raw_payload
