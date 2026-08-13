@@ -16,6 +16,7 @@ from modules.metadata_analyzer import analyze_metadata
 from modules.scoring_engine import calculate_interest_score
 from modules.report_generator import generate_report
 from modules.archive_analyzer import analyze_archive
+from modules.gzip_analyzer import analyze_gzip
 from modules.recommendation_engine import generate_recommendations
 from modules.encoding_analyzer import analyze_encoded_data
 from modules.challenge_classifier import classify_challenge
@@ -72,6 +73,56 @@ def smart_analyze(file_path, archive_password=None):
 
         if "metadata_analysis" in analysis_plan:
             analyze_metadata(file_path)
+
+        # -------------------------------------------------
+        # GZIP analysis
+        # -------------------------------------------------
+
+        gzip_results = None
+
+        if "gzip_analysis" in analysis_plan:
+            gzip_output_dir = os.path.join(
+                "output",
+                (
+                    os.path.basename(
+                        file_path
+                    )
+                    + "_extracted"
+                )
+            )
+
+            gzip_results = analyze_gzip(
+                file_path,
+                output_dir=gzip_output_dir
+            )
+
+            print("\n" + "=" * 55)
+            print("FalconCTF GZIP Analysis")
+            print("=" * 55)
+
+            if gzip_results["valid"]:
+                print(
+                    "[+] Valid GZIP stream detected"
+                )
+                print(
+                    "[+] Inner Type :",
+                    gzip_results["inner_type"]
+                )
+                print(
+                    "[+] Extracted  :",
+                    gzip_results["saved_path"]
+                )
+                print(
+                    "[+] Size       :",
+                    gzip_results["bytes_written"],
+                    "bytes"
+                )
+
+            else:
+                print(
+                    "[-] GZIP analysis failed:",
+                    gzip_results["reason"]
+                )
 
         # -------------------------------------------------
         # Archive analysis
