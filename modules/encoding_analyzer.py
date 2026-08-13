@@ -22,9 +22,9 @@ BASE64_PATTERN = re.compile(
 )
 
 HEX_PATTERN = re.compile(
-    r"(?<![0-9a-fA-F])"
+    r"(?<![A-Za-z0-9_])"
     r"(?:[0-9a-fA-F]{2}){4,}"
-    r"(?![0-9a-fA-F])"
+    r"(?![A-Za-z0-9_])"
 )
 
 FLAG_PATTERN = re.compile(
