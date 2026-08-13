@@ -269,3 +269,25 @@ def test_binary_encoded_flag():
     assert flag in results[
         "decoded_flags"
     ]
+
+
+def test_leetspeak_identifier_not_misclassified_as_hex():
+    text = (
+        "573417h13r_7h4n_7h3_1457_58527bb222"
+    )
+
+    results = analyze_encoded_data(
+        [text]
+    )
+
+    assert results["hex"] == []
+
+    assert not any(
+        layer["type"] == "hex"
+        for layer in results["recursive_layers"]
+    )
+
+    assert not any(
+        payload["source_encoding"] == "hex"
+        for payload in results["payloads"]
+    )
