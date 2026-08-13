@@ -4,7 +4,10 @@ from getpass import getpass
 
 from modules.hash_analyzer import calculate_hashes
 from modules.hex_analyzer import detect_file_type, analyze_hex
-from modules.strings_extractor import extract_strings
+from modules.strings_extractor import (
+    extract_strings,
+    get_string_scan_policy,
+)
 from modules.interesting_strings import analyze_interesting_strings
 from modules.analysis_router import choose_analysis
 from modules.binary_analyzer import analyze_binary
@@ -153,7 +156,43 @@ def smart_analyze(file_path, archive_password=None):
         # Strings
         # -------------------------------------------------
 
-        strings = extract_strings(file_path)
+        file_size = os.path.getsize(
+            file_path
+        )
+
+        string_policy = (
+            get_string_scan_policy(
+                file_size
+            )
+        )
+
+        if string_policy["limited"]:
+            print(
+                "\n[!] Large File Safety Mode"
+            )
+            print(
+                "[!] Generic strings and encoding "
+                "analysis will be sampled."
+            )
+            print(
+                "[!] Scan limit:",
+                string_policy["max_bytes"],
+                "bytes"
+            )
+            print(
+                "[!] Maximum unique strings:",
+                string_policy["max_strings"]
+            )
+
+        strings = extract_strings(
+            file_path,
+            max_bytes=string_policy[
+                "max_bytes"
+            ],
+            max_strings=string_policy[
+                "max_strings"
+            ],
+        )
 
         combined_text = "\n".join(strings)
 
