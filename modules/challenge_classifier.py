@@ -86,7 +86,13 @@ def classify_challenge(
     # Archive indicators
     # -------------------------------------------------
 
-    if "zip" in file_type_lower:
+    if "gzip" in file_type_lower:
+        scores["Archive"] += 30
+        reasons["Archive"].append(
+            "GZIP compressed container detected."
+        )
+
+    elif "zip" in file_type_lower:
         scores["Archive"] += 75
         reasons["Archive"].append(
             "ZIP archive detected."

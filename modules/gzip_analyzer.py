@@ -8,6 +8,63 @@ GZIP_CHUNK_SIZE = 1024 * 1024
 MAX_GZIP_OUTPUT_SIZE = 512 * 1024 * 1024
 
 
+def classify_inner_type(inner_type):
+    """
+    Route an extracted GZIP payload according
+    to its detected inner file type.
+    """
+
+    value = str(
+        inner_type
+    ).lower()
+
+    if any(
+        indicator in value
+        for indicator in (
+            "png",
+            "jpeg",
+            "jpg",
+            "gif",
+            "pdf",
+        )
+    ):
+        return (
+            "forensics",
+            100,
+            "GZIP extraction revealed a known "
+            "forensic payload."
+        )
+
+    if (
+        "elf" in value
+        or "pe executable" in value
+    ):
+        return (
+            "binary_analysis",
+            100,
+            "GZIP extraction revealed a known "
+            "executable payload."
+        )
+
+    if (
+        "zip archive" in value
+        or "gzip archive" in value
+    ):
+        return (
+            "archive_analysis",
+            100,
+            "GZIP extraction revealed another "
+            "compressed or archive payload."
+        )
+
+    return (
+        "manual_inspection",
+        40,
+        "The GZIP payload was extracted successfully, "
+        "but its inner file type requires deeper inspection."
+    )
+
+
 def analyze_gzip(
     file_path,
     output_dir="output/gzip_extracted",
@@ -17,6 +74,9 @@ def analyze_gzip(
         "valid": False,
         "saved_path": None,
         "inner_type": "Unknown File Type",
+        "inner_route": "manual_inspection",
+        "inner_confidence": 0,
+        "inner_reason": "",
         "bytes_written": 0,
         "reason": "",
     }
@@ -62,6 +122,14 @@ def analyze_gzip(
                 detect_file_type(
                     header
                 )
+            )
+
+            (
+                result["inner_route"],
+                result["inner_confidence"],
+                result["inner_reason"],
+            ) = classify_inner_type(
+                result["inner_type"]
             )
 
             total = 0

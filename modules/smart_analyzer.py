@@ -271,6 +271,51 @@ def smart_analyze(file_path, archive_password=None):
             output_dir=payload_output_dir
         )
 
+        # -------------------------------------------------
+        # Merge extracted GZIP payload intelligence
+        # -------------------------------------------------
+
+        if (
+            gzip_results
+            and gzip_results.get("valid")
+            and gzip_results.get("saved_path")
+        ):
+            gzip_payload = {
+                "depth": 1,
+                "source_encoding": "gzip",
+                "encoded": os.path.basename(
+                    file_path
+                ),
+                "payload_type": gzip_results[
+                    "inner_type"
+                ],
+                "confidence": gzip_results[
+                    "inner_confidence"
+                ],
+                "route": gzip_results[
+                    "inner_route"
+                ],
+                "reason": gzip_results[
+                    "inner_reason"
+                ],
+                "preview": (
+                    "Extracted GZIP payload: "
+                    + gzip_results["saved_path"]
+                ),
+                "saved_path": gzip_results[
+                    "saved_path"
+                ],
+            }
+
+            if gzip_payload not in encoding_results[
+                "payloads"
+            ]:
+                encoding_results[
+                    "payloads"
+                ].append(
+                    gzip_payload
+                )
+
         for decoded_flag in encoding_results[
             "decoded_flags"
         ]:
