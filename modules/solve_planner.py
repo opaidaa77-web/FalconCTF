@@ -369,7 +369,19 @@ def generate_solve_plan(
     # File-type intelligence
     # -------------------------------------------------
 
-    if "zip" in file_type_lower:
+    if "gzip" in file_type_lower:
+        add_step(
+            steps,
+            75,
+            "Continue analysis of the extracted GZIP payload.",
+            (
+                "The target is a GZIP-compressed container. "
+                "The extracted inner payload should drive "
+                "the next analysis stage."
+            )
+        )
+
+    elif "zip" in file_type_lower:
         add_step(
             steps,
             70,

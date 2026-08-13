@@ -212,7 +212,13 @@ def generate_recommendations(
     # ZIP
     # -------------------------------------------------
 
-    if "zip" in file_type_lower:
+    if "gzip" in file_type_lower:
+        add(
+            "Continue analysis of the extracted GZIP "
+            "payload using its detected inner file type."
+        )
+
+    elif "zip" in file_type_lower:
         add(
             "Review archive structure and nested files for "
             "hidden CTF artifacts."

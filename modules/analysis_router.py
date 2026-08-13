@@ -38,6 +38,13 @@ def choose_analysis(file_type):
             "metadata_analysis"
         ]
 
+    elif "gzip" in file_type:
+        analysis_plan = [
+            "hash_analysis",
+            "strings_analysis",
+            "gzip_analysis"
+        ]
+
     elif "zip" in file_type:
         analysis_plan = [
             "hash_analysis",
