@@ -1,4 +1,5 @@
 import argparse
+import os
 
 from config.settings import *
 
@@ -13,6 +14,28 @@ from modules.smart_analyzer import smart_analyze
 
 
 LINE_WIDTH = 64
+
+
+def normalize_file_path(file_path):
+    """
+    Normalize user-supplied file paths.
+
+    Supports:
+        - Home-directory expansion: ~/...
+        - Environment variables: $HOME/...
+        - Relative paths
+        - Absolute paths
+    """
+
+    expanded = os.path.expandvars(
+        os.path.expanduser(
+            file_path.strip()
+        )
+    )
+
+    return os.path.abspath(
+        expanded
+    )
 
 
 # =========================================================
@@ -188,6 +211,10 @@ def run_smart_analysis_interactive():
 
         return
 
+    file_path = normalize_file_path(
+        file_path
+    )
+
     smart_analyze(
         file_path
     )
@@ -207,6 +234,10 @@ def run_file_analyzer_interactive():
         )
 
         return
+
+    file_path = normalize_file_path(
+        file_path
+    )
 
     analyze_file(
         file_path
@@ -254,6 +285,10 @@ def run_strings_extractor_interactive():
         )
 
         return
+
+    file_path = normalize_file_path(
+        file_path
+    )
 
     run_strings_analysis(
         file_path
@@ -329,6 +364,10 @@ def run_hex_analyzer_interactive():
         )
 
         return
+
+    file_path = normalize_file_path(
+        file_path
+    )
 
     analyze_hex(
         file_path
@@ -564,7 +603,9 @@ def cli():
 
     if args.command == "analyze":
         result = smart_analyze(
-            args.file,
+            normalize_file_path(
+                args.file
+            ),
             archive_password=args.password
         )
 
@@ -572,7 +613,9 @@ def cli():
 
     if args.command == "file":
         analyze_file(
-            args.file
+            normalize_file_path(
+                args.file
+            )
         )
 
         return 0
@@ -596,7 +639,9 @@ def cli():
 
     if args.command == "strings":
         run_strings_analysis(
-            args.file
+            normalize_file_path(
+                args.file
+            )
         )
 
         return 0
@@ -628,7 +673,9 @@ def cli():
 
     if args.command == "hex":
         analyze_hex(
-            args.file
+            normalize_file_path(
+                args.file
+            )
         )
 
         return 0
