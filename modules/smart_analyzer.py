@@ -12,7 +12,10 @@ from modules.interesting_strings import analyze_interesting_strings
 from modules.analysis_router import choose_analysis
 from modules.binary_analyzer import analyze_binary
 from modules.flag_detector import detect_flags
-from modules.metadata_analyzer import analyze_metadata
+from modules.metadata_analyzer import (
+    analyze_metadata,
+    get_metadata_text_values
+)
 from modules.scoring_engine import calculate_interest_score
 from modules.report_generator import generate_report
 from modules.archive_analyzer import analyze_archive
@@ -71,8 +74,13 @@ def smart_analyze(file_path, archive_password=None):
         if "hex_analysis" in analysis_plan:
             analyze_hex(file_path)
 
+        metadata_results = {}
+
         if "metadata_analysis" in analysis_plan:
-            analyze_metadata(file_path)
+            metadata_results = (
+                analyze_metadata(file_path)
+                or {}
+            )
 
         # -------------------------------------------------
         # GZIP analysis
@@ -265,8 +273,18 @@ def smart_analyze(file_path, archive_password=None):
             )
         )
 
+        encoding_sources = list(strings)
+
+        for metadata_text in get_metadata_text_values(
+            metadata_results
+        ):
+            if metadata_text not in encoding_sources:
+                encoding_sources.append(
+                    metadata_text
+                )
+
         encoding_results = analyze_encoded_data(
-            strings,
+            encoding_sources,
             save_payloads=True,
             output_dir=payload_output_dir
         )

@@ -588,6 +588,46 @@ def inspect_payload(payload):
         return result
 
     # -------------------------------------------------
+    # PEM key and certificate detection
+    # -------------------------------------------------
+
+    stripped_data = raw_data.lstrip()
+
+    pem_signatures = (
+        (
+            b"-----BEGIN PRIVATE KEY-----",
+            "PEM Private Key"
+        ),
+        (
+            b"-----BEGIN RSA PRIVATE KEY-----",
+            "PEM RSA Private Key"
+        ),
+        (
+            b"-----BEGIN ENCRYPTED PRIVATE KEY-----",
+            "PEM Encrypted Private Key"
+        ),
+        (
+            b"-----BEGIN PUBLIC KEY-----",
+            "PEM Public Key"
+        ),
+        (
+            b"-----BEGIN CERTIFICATE-----",
+            "PEM Certificate"
+        )
+    )
+
+    for signature, payload_type in pem_signatures:
+        if stripped_data.startswith(signature):
+            result["payload_type"] = payload_type
+            result["confidence"] = 100
+            result["route"] = "crypto_analysis"
+            result["reason"] = (
+                "Recognized PEM cryptographic material "
+                "was recovered from the decoded payload."
+            )
+            return result
+
+    # -------------------------------------------------
     # File signature detection
     # -------------------------------------------------
 
@@ -797,6 +837,35 @@ def inspect_payload(payload):
                 3
             )
 
+            return result
+
+    # -------------------------------------------------
+    # Low-diversity text false-positive protection
+    # -------------------------------------------------
+
+    if text is not None:
+        visible_characters = [
+            character
+            for character in text
+            if not character.isspace()
+        ]
+
+        if (
+            len(visible_characters) >= 12
+            and len(set(visible_characters)) <= 2
+        ):
+            result["payload_type"] = (
+                "Low-Diversity Text"
+            )
+            result["confidence"] = 25
+            result["route"] = (
+                "stop_recursive_decoding"
+            )
+            result["reason"] = (
+                "Decoded text contains too little character "
+                "diversity to justify a high-confidence "
+                "readable-text classification."
+            )
             return result
 
     # -------------------------------------------------
