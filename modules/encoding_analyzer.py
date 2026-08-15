@@ -787,6 +787,22 @@ def analyze_encoded_data(
             )
 
         # -------------------------------------------------
+        # Stop recursion on confirmed terminal payloads
+        # -------------------------------------------------
+
+        current_payload = inspect_decoded_payload(
+            text.encode("utf-8")
+        )
+
+        if (
+            current_payload
+            and current_payload["payload_type"].startswith(
+                "PEM "
+            )
+        ):
+            return
+
+        # -------------------------------------------------
         # Payload Intelligence
         # -------------------------------------------------
 
